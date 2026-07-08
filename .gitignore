@@ -2,11 +2,8 @@ build/
 dist/
 logs/
 .idea/
-.serena/
 
 .env
 .coverage
 *.spec
 *.iml
-
-error_log.txt
