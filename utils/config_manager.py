@@ -4,15 +4,18 @@ import sys
 from pathlib import Path
 from typing import Final
 
+
 def get_config_path() -> Path:
     # 実行ファイルのディレクトリを取得
-    if getattr(sys, 'frozen', False):
+    if getattr(sys, "frozen", False):
         base_path = Path(sys._MEIPASS)  # type: ignore[attr-defined]
     else:
         base_path = Path(os.path.dirname(os.path.abspath(__file__)))
-    return base_path / 'config.ini'
+    return base_path / "config.ini"
+
 
 CONFIG_PATH: Final[Path] = get_config_path()
+
 
 class ConfigManager:
     def __init__(self, config_file: Path | str = CONFIG_PATH) -> None:
@@ -25,35 +28,43 @@ class ConfigManager:
             raise FileNotFoundError(f"Config file not found: {self.config_file}")
 
         try:
-            self.config.read(self.config_file, encoding='utf-8')
+            self.config.read(self.config_file, encoding="utf-8")
         except UnicodeDecodeError:
             try:
-                content: str = self.config_file.read_bytes().decode('cp932')
+                content: str = self.config_file.read_bytes().decode("cp932")
                 self.config.read_string(content)
             except (UnicodeDecodeError, OSError) as e:
                 raise OSError(f"Failed to load config: {e}") from e
 
     def save_config(self) -> None:
         try:
-            with open(self.config_file, 'w', encoding='utf-8') as configfile:
+            with open(self.config_file, "w", encoding="utf-8") as configfile:
                 self.config.write(configfile)
         except (IOError, OSError) as e:
             raise OSError(f"Failed to load config: {e}") from e
 
     def get_path(self, key: str) -> Path:
-        return Path(self.config.get('Paths', key))
+        return Path(self.config.get("Paths", key))
 
     def get_tesseract_path(self) -> str:
-        return self.config.get('Paths', 'tesseract_path', 
-                             fallback=r'C:\Program Files\Tesseract-OCR\tesseract.exe')
+        return self.config.get(
+            "Paths",
+            "tesseract_path",
+            fallback=r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+        )
 
     def set_tesseract_path(self, path: str | Path) -> None:
         path_obj: Path = Path(path)
         if not path_obj.exists():
             raise FileNotFoundError(f"Tesseract executable not found at: {path}")
 
-        self._ensure_section('Paths')
-        self.config['Paths']['tesseract_path'] = str(path_obj)
+        self._ensure_section("Paths")
+        self.config["Paths"]["tesseract_path"] = str(path_obj)
+        self.save_config()
+
+    def set_value(self, section: str, key: str, value: str) -> None:
+        self._ensure_section(section)
+        self.config[section][key] = value
         self.save_config()
 
     def _ensure_section(self, section: str) -> None:
@@ -75,7 +86,7 @@ def get_config_value(
     try:
         value = config.get(section, key)
         if isinstance(fallback, bool):
-            return value.lower() in ('true', '1', 'yes')
+            return value.lower() in ("true", "1", "yes")
         if isinstance(fallback, int):
             return int(value)
         return value
