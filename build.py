@@ -1,0 +1,18 @@
+import subprocess
+
+
+def build_executable():
+    new_version = update_version()
+    subprocess.run([
+        "pyinstaller",
+        "--name=app_name",
+        "--windowed",
+        "--add-data", "utils/config.ini:.",
+        "main.py"
+    ])
+
+    print(f"Executable built successfully.")
+
+
+if __name__ == "__main__":
+    build_executable()
