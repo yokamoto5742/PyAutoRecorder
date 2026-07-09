@@ -15,8 +15,8 @@ _LAUNCHER_SECTION = "TrayLauncher"
 
 def _icon_path() -> Path:
     if getattr(sys, "frozen", False):
-        return Path(sys._MEIPASS) / "app.png"  # type: ignore[attr-defined]
-    return Path(__file__).parent.parent / "assets" / "app.png"
+        return Path(sys._MEIPASS) / "PyAutoRecorder.png"  # type: ignore[attr-defined]
+    return Path(__file__).parent.parent / "assets" / "PyAutoRecorder.png"
 
 
 class AppTrayIcon(QSystemTrayIcon):
