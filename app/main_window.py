@@ -35,6 +35,7 @@ from service.hotkey_manager import (
 from service.models import ActionItem, ActionType, MacroFile
 from service.player import MacroPlayer
 from service.recorder import MacroRecorder
+from service.single_instance import SingleInstanceServer
 from service.timer_scheduler import TimerScheduler
 from utils.config_manager import ConfigManager
 
@@ -47,7 +48,7 @@ class MainWindow(QMainWindow):
     hotkey_play_stop = Signal()
     hotkey_pause = Signal()
 
-    def __init__(self) -> None:
+    def __init__(self, launch_file_path: str | None = None) -> None:
         super().__init__()
         self._config = ConfigManager()
         self._macro = MacroFile()
@@ -56,6 +57,7 @@ class MainWindow(QMainWindow):
         self._recorder: MacroRecorder | None = None
         self._player: MacroPlayer | None = None
         self._child_window: RecorderChildWindow | None = None
+        self._auto_quit_after_playback = launch_file_path is not None
 
         self._stop_button = RecordingStopButton()
         self._stop_button.stop_requested.connect(self._finish_recording)
@@ -89,6 +91,12 @@ class MainWindow(QMainWindow):
         self._tray.launch_file_requested.connect(self._launch_file)
         self._tray.add_current_requested.connect(self._add_current_to_launcher)
         self._tray.show()
+
+        self._single_instance_server = SingleInstanceServer(self)
+        self._single_instance_server.file_received.connect(self._launch_file)
+
+        if launch_file_path is not None:
+            self._launch_file(launch_file_path)
 
     # --- UI構築 ---
 
@@ -322,7 +330,8 @@ class MainWindow(QMainWindow):
         self._player = MacroPlayer(self._macro)
         self._player.playback_finished.connect(self._on_playback_finished)
         self._player.error_occurred.connect(self._on_playback_error)
-        self.showMinimized()
+        if not self._auto_quit_after_playback:
+            self.showMinimized()
         self._player.start()
 
     def _stop_playback(self) -> None:
@@ -345,6 +354,9 @@ class MainWindow(QMainWindow):
         if self._player is not None:
             self._player.wait()
             self._player = None
+        if self._auto_quit_after_playback:
+            self.close()
+            return
         self.showNormal()
         self.activateWindow()
         message = (
@@ -476,6 +488,8 @@ class MainWindow(QMainWindow):
                 constants.WINDOW_TITLE,
                 constants.MSG_FILE_LOAD_ERROR.format(error=e),
             )
+            if self._auto_quit_after_playback:
+                self.close()
             return
         self._file_path = Path(path)
         self._apply_loaded_macro()
