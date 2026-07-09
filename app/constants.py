@@ -48,6 +48,7 @@ ACTION_LABELS = {
     "middle": "中クリック",
     "drag": "ドラッグ",
     "key_only": "キーOnly",
+    "launch_app": "アプリ起動",
 }
 
 # ファイルダイアログ
@@ -77,7 +78,12 @@ LABEL_KEYS = "キーボード操作:"
 LABEL_DRAG_TO = "ドラッグ先(X,Y):"
 LABEL_REPEAT_OFFSET = "繰り返すたびに移動する量(X,Y):"
 LABEL_KEY_REPEAT_INCREASE = "繰り返すたびにキーボード操作の実行回数を増加"
+LABEL_APP_PATH = "起動するアプリ:"
+BUTTON_BROWSE_APP = "参照..."
+FILE_DIALOG_APP_TITLE = "起動するアプリを選択"
+FILE_DIALOG_APP_FILTER = "実行ファイル (*.exe);;すべてのファイル (*)"
 MSG_INVALID_KEYS = "キーボード操作の記述が不正です: {error}"
+MSG_APP_PATH_REQUIRED = "起動するアプリのパスを指定してください。"
 
 # 条件判断
 GROUP_CONDITION = "条件判断使用"
@@ -103,6 +109,11 @@ CONDITION_LABELS = {
     "datetime_wait": "次の日時になるまで待機",
     "datetime_match_run": "次の日時であれば実行",
     "repeat_index_run": "繰り返し数が次の回目であれば実行",
+    "button_shown_wait": "次のボタンが表示されるまで待機",
+    "button_hidden_wait": "次のボタンが消えるまで待機",
+    "button_shown_skip": "次のボタンが表示されていればスキップ",
+    "button_not_shown_skip": "次のボタンが表示されていなければスキップ",
+    "image_shown_wait": "次の画像が表示されるまで待機",
 }
 CONDITION_VALUE_HINTS = {
     "window_shown_wait": 'タイトル名（"..."で完全一致）',
@@ -123,7 +134,19 @@ CONDITION_VALUE_HINTS = {
     "datetime_wait": "YYYY-MM-DD HH:MM または HH:MM",
     "datetime_match_run": "HH:MM",
     "repeat_index_run": "例: 2|5|17、奇数、偶数、7n",
+    "button_shown_wait": "ボタン名[,親タイトル or class:クラス名]",
+    "button_hidden_wait": "ボタン名[,親タイトル or class:クラス名]",
+    "button_shown_skip": "ボタン名[,親タイトル or class:クラス名]",
+    "button_not_shown_skip": "ボタン名[,親タイトル or class:クラス名]",
+    "image_shown_wait": "「画像を取得」で認識する画像を設定",
 }
+
+# 画像認識
+BUTTON_CAPTURE_IMAGE = "画像を取得"
+LABEL_CONDITION_IMAGE = "認識する画像:"
+MSG_IMAGE_REQUIRED = "認識する画像を取得してください。"
+DIALOG_CAPTURE_TITLE = "認識する画像の選択"
+MSG_CAPTURE_INSTRUCTION = "認識する範囲をドラッグで選択してください（Escで中止）"
 
 # 子機
 CHILD_WINDOW_TITLE = "子機"
@@ -151,6 +174,12 @@ STOP_MODE_LABELS = {
     "all": "すべて停止",
     "final": "最後の処理をする",
 }
+
+# オプション設定（parファイル別）
+TOOLBAR_OPTIONS = "オプション"
+DIALOG_OPTIONS_TITLE = "オプション設定"
+LABEL_USE_PAUSE_HOTKEY = "一時停止の制御キーを使用"
+LABEL_SPEED_PERCENT = "全体の速度率(%):"
 
 # トレイランチャー
 TRAY_MENU_ADD_CURRENT = "現在のファイルをランチャーに追加"

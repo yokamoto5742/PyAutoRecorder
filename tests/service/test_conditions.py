@@ -6,6 +6,7 @@ import pytest
 from service import conditions
 from service.conditions import (
     ConditionContext,
+    parse_button_spec,
     parse_color_spec,
     parse_datetime_spec,
     parse_file_size_spec,
@@ -75,6 +76,15 @@ class TestSpecParsers:
         assert path == Path(r"C:\readme.txt")
         assert size == 500
 
+    def test_button_name_only(self):
+        assert parse_button_spec("OK") == ("OK", "", "")
+
+    def test_button_with_parent_title(self):
+        assert parse_button_spec("OK, 保存の確認") == ("OK", "保存の確認", "")
+
+    def test_button_with_parent_class(self):
+        assert parse_button_spec("OK,class:#32770") == ("OK", "", "#32770")
+
 
 class TestShouldRun:
     def test_no_condition_runs(self):
@@ -132,3 +142,34 @@ class TestShouldRun:
         run_on = Condition(ConditionType.REPEAT_INDEX_RUN, "2|5")
         assert should_run(run_on, ConditionContext(repeat_index=2))
         assert not should_run(run_on, ConditionContext(repeat_index=3))
+
+    def test_button_shown_skip(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            conditions, "button_shown", lambda name, title, cls: name == "OK"
+        )
+        skip_if_shown = Condition(ConditionType.BUTTON_SHOWN_SKIP, "OK")
+        assert not should_run(skip_if_shown, ConditionContext())
+
+    def test_button_not_shown_skip(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(conditions, "button_shown", lambda name, title, cls: False)
+        skip_if_not_shown = Condition(ConditionType.BUTTON_NOT_SHOWN_SKIP, "OK")
+        assert not should_run(skip_if_not_shown, ConditionContext())
+
+    def test_button_shown_wait_returns_immediately_when_shown(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        monkeypatch.setattr(conditions, "button_shown", lambda name, title, cls: True)
+        wait = Condition(ConditionType.BUTTON_SHOWN_WAIT, "OK,メモ帳", max_wait_sec=5)
+        assert should_run(wait, ConditionContext())
+
+    def test_button_hidden_wait_returns_immediately_when_hidden(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        monkeypatch.setattr(conditions, "button_shown", lambda name, title, cls: False)
+        wait = Condition(ConditionType.BUTTON_HIDDEN_WAIT, "OK", max_wait_sec=5)
+        assert should_run(wait, ConditionContext())
+
+    def test_image_shown_wait(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(conditions, "image_shown", lambda image: image == "abc")
+        wait = Condition(ConditionType.IMAGE_SHOWN_WAIT, image="abc")
+        assert should_run(wait, ConditionContext())

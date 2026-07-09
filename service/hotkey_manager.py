@@ -31,3 +31,21 @@ class HotkeyManager:
         if self._listener is not None:
             self._listener.stop()
             self._listener = None
+
+
+class SingleHotkeyListener:
+    """parファイル別の一時停止キーなど、1つのホットキーだけを監視する。"""
+
+    def __init__(self, hotkey: str, callback: Callable[[], None]) -> None:
+        self._hotkeys = {hotkey: callback}
+        self._listener: keyboard.GlobalHotKeys | None = None
+
+    def start(self) -> None:
+        if self._listener is None:
+            self._listener = keyboard.GlobalHotKeys(self._hotkeys)
+            self._listener.start()
+
+    def stop(self) -> None:
+        if self._listener is not None:
+            self._listener.stop()
+            self._listener = None

@@ -15,6 +15,7 @@ class ActionType(Enum):
     MIDDLE_CLICK = "middle"
     DRAG = "drag"
     KEY_ONLY = "key_only"
+    LAUNCH_APP = "launch_app"
 
 
 class ConditionType(Enum):
@@ -42,6 +43,13 @@ class ConditionType(Enum):
     DATETIME_MATCH_RUN = "datetime_match_run"
     # 繰り返し回目（value="2|5|17"、"奇数"、"偶数"、"7n"）
     REPEAT_INDEX_RUN = "repeat_index_run"
+    # ボタン（value="ボタン名[,親ウィンドウのタイトル or class:クラス名]"）
+    BUTTON_SHOWN_WAIT = "button_shown_wait"
+    BUTTON_HIDDEN_WAIT = "button_hidden_wait"
+    BUTTON_SHOWN_SKIP = "button_shown_skip"
+    BUTTON_NOT_SHOWN_SKIP = "button_not_shown_skip"
+    # 画像認識（imageフィールドのbase64 PNGが画面に表示されるまで待機）
+    IMAGE_SHOWN_WAIT = "image_shown_wait"
 
 
 @dataclass
@@ -49,13 +57,17 @@ class Condition:
     condition_type: ConditionType
     value: str = ""
     max_wait_sec: int = 0  # 待機系のみ有効。0は無限待機
+    image: str = ""  # 画像認識条件用のテンプレート画像（PNGのbase64）
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        data: dict[str, Any] = {
             "type": self.condition_type.value,
             "value": self.value,
             "max_wait_sec": self.max_wait_sec,
         }
+        if self.image:
+            data["image"] = self.image
+        return data
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "Condition":
@@ -63,6 +75,7 @@ class Condition:
             condition_type=ConditionType(data["type"]),
             value=data.get("value", ""),
             max_wait_sec=int(data.get("max_wait_sec", 0)),
+            image=data.get("image", ""),
         )
 
 
@@ -77,6 +90,7 @@ class ActionItem:
     repeat_offset: tuple[int, int] = (0, 0)  # 繰り返すたびに移動する量
     key_repeat_increase: bool = False  # 繰り返すたびにキー操作の実行回数を増加
     condition: Condition | None = None
+    app_path: str = ""  # LAUNCH_APP時に起動するアプリのフルパス
 
     def to_dict(self) -> dict[str, Any]:
         data: dict[str, Any] = {
@@ -94,6 +108,8 @@ class ActionItem:
             data["key_repeat_increase"] = True
         if self.condition is not None:
             data["condition"] = self.condition.to_dict()
+        if self.app_path:
+            data["app_path"] = self.app_path
         return data
 
     @classmethod
@@ -111,6 +127,7 @@ class ActionItem:
             repeat_offset=(repeat_offset[0], repeat_offset[1]),
             key_repeat_increase=bool(data.get("key_repeat_increase", False)),
             condition=Condition.from_dict(condition) if condition else None,
+            app_path=data.get("app_path", ""),
         )
 
 
@@ -120,6 +137,8 @@ class MacroSettings:
     play_timer: str = ""  # "HH:MM" 空文字は無効
     stop_timer: str = ""
     stop_timer_mode: str = "all"  # "all"=すべて停止 / "final"=最後の処理へ移行
+    pause_hotkey: str = ""  # pynput記法（例 "<f5>", "<ctrl>+<f9>"）。空は無効
+    speed_percent: int = 100  # 全体の再生速度率（100〜300%）
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -127,6 +146,8 @@ class MacroSettings:
             "play_timer": self.play_timer,
             "stop_timer": self.stop_timer,
             "stop_timer_mode": self.stop_timer_mode,
+            "pause_hotkey": self.pause_hotkey,
+            "speed_percent": self.speed_percent,
         }
 
     @classmethod
@@ -136,6 +157,8 @@ class MacroSettings:
             play_timer=data.get("play_timer", ""),
             stop_timer=data.get("stop_timer", ""),
             stop_timer_mode=data.get("stop_timer_mode", "all"),
+            pause_hotkey=data.get("pause_hotkey", ""),
+            speed_percent=int(data.get("speed_percent", 100)),
         )
 
 

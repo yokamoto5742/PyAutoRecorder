@@ -1,14 +1,19 @@
 """項目編集ダイアログ: 間隔・座標・クリック方法・キーボード操作・条件判断を編集する。"""
 
+import base64
+
+from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDialog,
     QDialogButtonBox,
     QDoubleSpinBox,
+    QFileDialog,
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
+    QLabel,
     QLineEdit,
     QMessageBox,
     QPushButton,
@@ -18,6 +23,7 @@ from PySide6.QtWidgets import (
 )
 
 from app import constants
+from app.image_capture_dialog import capture_screen_region
 from service.key_notation import SPECIAL_KEYS, parse
 from service.models import ActionItem, ActionType, Condition, ConditionType
 
@@ -91,7 +97,22 @@ class ItemEditorDialog(QDialog):
         self._key_repeat = QCheckBox(constants.LABEL_KEY_REPEAT_INCREASE)
         self._key_repeat.setChecked(item.key_repeat_increase)
         form.addRow("", self._key_repeat)
+
+        self._app_path = QLineEdit(item.app_path)
+        browse = QPushButton(constants.BUTTON_BROWSE_APP)
+        browse.clicked.connect(self._browse_app_path)
+        form.addRow(constants.LABEL_APP_PATH, self._pair(self._app_path, browse))
         return form
+
+    def _browse_app_path(self) -> None:
+        path_str, _filter = QFileDialog.getOpenFileName(
+            self,
+            constants.FILE_DIALOG_APP_TITLE,
+            self._app_path.text(),
+            constants.FILE_DIALOG_APP_FILTER,
+        )
+        if path_str:
+            self._app_path.setText(path_str)
 
     @staticmethod
     def _coord_spinbox(value: int | None) -> QSpinBox:
@@ -150,6 +171,16 @@ class ItemEditorDialog(QDialog):
         self._condition_max_wait.setRange(0, 99999)
         form.addRow(constants.LABEL_CONDITION_MAX_WAIT, self._condition_max_wait)
 
+        self._condition_image = condition.image if condition else ""
+        self._capture_button = QPushButton(constants.BUTTON_CAPTURE_IMAGE)
+        self._capture_button.clicked.connect(self._capture_image)
+        self._image_preview = QLabel()
+        form.addRow(
+            constants.LABEL_CONDITION_IMAGE,
+            self._pair(self._capture_button, self._image_preview),
+        )
+        self._update_image_preview()
+
         if condition is not None:
             index = self._condition_type.findData(condition.condition_type.value)
             self._condition_type.setCurrentIndex(index)
@@ -158,20 +189,43 @@ class ItemEditorDialog(QDialog):
         self._on_condition_type_changed()
         return group
 
+    def _is_image_condition(self) -> bool:
+        return (
+            self._condition_type.currentData() == ConditionType.IMAGE_SHOWN_WAIT.value
+        )
+
+    def _capture_image(self) -> None:
+        image = capture_screen_region(self)
+        if image:
+            self._condition_image = image
+            self._update_image_preview()
+
+    def _update_image_preview(self) -> None:
+        if not self._condition_image:
+            self._image_preview.clear()
+            return
+        pixmap = QPixmap()
+        pixmap.loadFromData(base64.b64decode(self._condition_image))
+        self._image_preview.setPixmap(pixmap.scaledToHeight(min(pixmap.height(), 48)))
+
     def _on_action_changed(self) -> None:
         action = ActionType(self._action.currentData())
-        has_coords = action != ActionType.KEY_ONLY
+        has_coords = action not in (ActionType.KEY_ONLY, ActionType.LAUNCH_APP)
         self._x.setEnabled(has_coords)
         self._y.setEnabled(has_coords)
         is_drag = action == ActionType.DRAG
         self._drag_x.setEnabled(is_drag)
         self._drag_y.setEnabled(is_drag)
+        self._app_path.setEnabled(action == ActionType.LAUNCH_APP)
 
     def _on_condition_type_changed(self) -> None:
         hint = constants.CONDITION_VALUE_HINTS.get(
             self._condition_type.currentData(), ""
         )
         self._condition_value.setPlaceholderText(hint)
+        is_image = self._is_image_condition()
+        self._condition_value.setEnabled(not is_image)
+        self._capture_button.setEnabled(is_image)
 
     def _on_accept(self) -> None:
         try:
@@ -183,12 +237,27 @@ class ItemEditorDialog(QDialog):
                 constants.MSG_INVALID_KEYS.format(error=e),
             )
             return
+        action = ActionType(self._action.currentData())
+        if action == ActionType.LAUNCH_APP and not self._app_path.text().strip():
+            QMessageBox.warning(
+                self, constants.DIALOG_EDIT_TITLE, constants.MSG_APP_PATH_REQUIRED
+            )
+            return
+        if (
+            self._condition_group.isChecked()
+            and self._is_image_condition()
+            and not self._condition_image
+        ):
+            QMessageBox.warning(
+                self, constants.DIALOG_EDIT_TITLE, constants.MSG_IMAGE_REQUIRED
+            )
+            return
         self.accept()
 
     def edited_item(self) -> ActionItem:
         """編集結果を新しいActionItemとして返す。"""
         action = ActionType(self._action.currentData())
-        has_coords = action != ActionType.KEY_ONLY
+        has_coords = action not in (ActionType.KEY_ONLY, ActionType.LAUNCH_APP)
         return ActionItem(
             interval=self._interval.value(),
             x=self._x.value() if has_coords else None,
@@ -203,6 +272,9 @@ class ItemEditorDialog(QDialog):
             repeat_offset=(self._offset_x.value(), self._offset_y.value()),
             key_repeat_increase=self._key_repeat.isChecked(),
             condition=self._edited_condition(),
+            app_path=(
+                self._app_path.text().strip() if action == ActionType.LAUNCH_APP else ""
+            ),
         )
 
     def _edited_condition(self) -> Condition | None:
@@ -212,4 +284,5 @@ class ItemEditorDialog(QDialog):
             condition_type=ConditionType(self._condition_type.currentData()),
             value=self._condition_value.text(),
             max_wait_sec=self._condition_max_wait.value(),
+            image=self._condition_image if self._is_image_condition() else "",
         )

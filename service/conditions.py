@@ -14,6 +14,7 @@ from pathlib import Path
 from service.models import Condition, ConditionType
 
 POLL_INTERVAL_SEC = 1.0
+IMAGE_CONFIDENCE = 0.9
 
 
 @dataclass
@@ -60,6 +61,40 @@ def get_pixel_color(x: int | None, y: int | None) -> tuple[int, int, int]:
     if x is None or y is None:
         x, y = pyautogui.position()
     return pyautogui.pixel(x, y)
+
+
+def button_shown(button_name: str, parent_title: str, parent_class: str) -> bool:
+    """UI Automationでボタンの表示状態を判定する（親ウィンドウ指定は省略可）。"""
+    import uiautomation
+
+    # 再生スレッドから呼ばれるためスレッドごとにCOMを初期化する
+    with uiautomation.UIAutomationInitializerInThread():
+        for window in uiautomation.GetRootControl().GetChildren():
+            if parent_title and not title_matches([window.Name], parent_title):
+                continue
+            if parent_class and window.ClassName != parent_class:
+                continue
+            button = window.ButtonControl(searchDepth=0xFFFFFFFF, Name=button_name)
+            if button.Exists(maxSearchSeconds=0, searchIntervalSeconds=0):
+                return not button.IsOffscreen
+    return False
+
+
+def image_shown(image_base64: str) -> bool:
+    """base64のPNGテンプレートが画面上に表示されているかを判定する。"""
+    import base64
+    import io
+
+    import pyautogui
+    from PIL import Image
+
+    template = Image.open(io.BytesIO(base64.b64decode(image_base64)))
+    try:
+        return (
+            pyautogui.locateOnScreen(template, confidence=IMAGE_CONFIDENCE) is not None
+        )
+    except pyautogui.ImageNotFoundException:
+        return False
 
 
 # --- 純ロジック ---
@@ -120,6 +155,20 @@ def parse_file_size_spec(spec: str) -> tuple[Path, int]:
     """ "パス,バイト数"形式をパースする。"""
     path_str, size_str = spec.rsplit(",", 1)
     return Path(path_str.strip()), int(size_str.strip())
+
+
+def parse_button_spec(spec: str) -> tuple[str, str, str]:
+    """ "ボタン名[,親タイトル or class:クラス名]"形式をパースする。
+
+    戻り値は (ボタン名, 親タイトル, 親クラス名)。親指定省略時は全ウィンドウ対象。
+    """
+    if "," not in spec:
+        return spec.strip(), "", ""
+    button_name, parent = spec.split(",", 1)
+    parent = parent.strip()
+    if parent.startswith("class:"):
+        return button_name.strip(), "", parent[len("class:") :].strip()
+    return button_name.strip(), parent, ""
 
 
 # --- 待機ループ ---
@@ -206,6 +255,25 @@ def _handle_repeat_index(condition: Condition, context: ConditionContext) -> boo
     return repeat_index_matches(condition.value, context.repeat_index)
 
 
+def _button_shown(condition: Condition) -> bool:
+    return button_shown(*parse_button_spec(condition.value))
+
+
+def _handle_button(condition: Condition, context: ConditionContext) -> bool:
+    kind = condition.condition_type
+    if kind == ConditionType.BUTTON_SHOWN_WAIT:
+        return _wait_until(lambda: _button_shown(condition), condition, context)
+    if kind == ConditionType.BUTTON_HIDDEN_WAIT:
+        return _wait_until(lambda: not _button_shown(condition), condition, context)
+    if kind == ConditionType.BUTTON_SHOWN_SKIP:
+        return not _button_shown(condition)
+    return _button_shown(condition)  # BUTTON_NOT_SHOWN_SKIP
+
+
+def _handle_image(condition: Condition, context: ConditionContext) -> bool:
+    return _wait_until(lambda: image_shown(condition.image), condition, context)
+
+
 _HANDLERS = {
     ConditionType.WINDOW_SHOWN_WAIT: _handle_window,
     ConditionType.WINDOW_CLOSED_WAIT: _handle_window,
@@ -225,4 +293,9 @@ _HANDLERS = {
     ConditionType.DATETIME_WAIT: _handle_datetime,
     ConditionType.DATETIME_MATCH_RUN: _handle_datetime,
     ConditionType.REPEAT_INDEX_RUN: _handle_repeat_index,
+    ConditionType.BUTTON_SHOWN_WAIT: _handle_button,
+    ConditionType.BUTTON_HIDDEN_WAIT: _handle_button,
+    ConditionType.BUTTON_SHOWN_SKIP: _handle_button,
+    ConditionType.BUTTON_NOT_SHOWN_SKIP: _handle_button,
+    ConditionType.IMAGE_SHOWN_WAIT: _handle_image,
 }

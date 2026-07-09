@@ -1,5 +1,6 @@
 """再生エンジン: MacroFileの項目を 最初の処理→繰り返し処理×N→最後の処理 の順に実行する。"""
 
+import subprocess
 import threading
 import time
 
@@ -17,7 +18,7 @@ pyautogui.FAILSAFE = True  # 画面左上隅へのマウス移動で緊急停止
 
 KEY_INTERVAL_SEC = 0.02
 POINTER_CLICK_INTERVAL_SEC = 0.05
-MOVE_DURATION_SEC = 0.2
+MOVE_DURATION_SEC = 0.0  # マウスの軌道はトレースせず瞬間移動する
 DRAG_DURATION_SEC = 0.3
 _TICK_SEC = 0.05
 
@@ -64,7 +65,7 @@ class MacroPlayer(QThread):
             completed = self._run_all()
         except pyautogui.FailSafeException:
             completed = False
-        except ValueError as e:
+        except (ValueError, OSError) as e:  # OSErrorはアプリ起動失敗時
             self.error_occurred.emit(str(e))
             completed = False
         self.playback_finished.emit(completed)
@@ -94,7 +95,7 @@ class MacroPlayer(QThread):
                 if self._stop_event.is_set():
                     return False
                 continue  # 条件不成立によるスキップ
-            if not self._sleep(item.interval):
+            if not self._sleep(self._scaled_interval(item.interval)):
                 return False
             self._wait_while_paused()
             if self._stop_event.is_set():
@@ -102,7 +103,16 @@ class MacroPlayer(QThread):
             self._execute_item(item, repeat_index)
         return True
 
+    def _scaled_interval(self, interval: float) -> float:
+        """速度率（100〜300%）に応じて間隔を短縮する。"""
+        percent = max(100, min(300, self._macro.settings.speed_percent))
+        return interval * 100 / percent
+
     def _execute_item(self, item: ActionItem, repeat_index: int) -> None:
+        if item.action == ActionType.LAUNCH_APP:
+            if item.app_path:
+                subprocess.Popen([item.app_path])
+            return
         offset_count = max(0, repeat_index - 1)
         dx = item.repeat_offset[0] * offset_count
         dy = item.repeat_offset[1] * offset_count

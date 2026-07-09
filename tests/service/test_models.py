@@ -12,7 +12,12 @@ from service.models import (
 
 def build_sample_macro() -> MacroFile:
     return MacroFile(
-        settings=MacroSettings(repeat_count=5, play_timer="08:00"),
+        settings=MacroSettings(
+            repeat_count=5,
+            play_timer="08:00",
+            pause_hotkey="<ctrl>+<f9>",
+            speed_percent=150,
+        ),
         initial=[
             ActionItem(interval=1.0, x=100, y=200, action=ActionType.LEFT_CLICK),
         ],
@@ -41,6 +46,20 @@ def build_sample_macro() -> MacroFile:
         ],
         final=[
             ActionItem(interval=1.0, action=ActionType.KEY_ONLY, keys="%{F4}"),
+            ActionItem(
+                interval=0.5,
+                action=ActionType.LAUNCH_APP,
+                app_path=r"C:\Shinseikai\TextFileLog\TextFileLog.exe",
+            ),
+            ActionItem(
+                interval=1.0,
+                action=ActionType.NONE,
+                condition=Condition(
+                    condition_type=ConditionType.IMAGE_SHOWN_WAIT,
+                    max_wait_sec=30,
+                    image="aGVsbG8=",
+                ),
+            ),
         ],
     )
 
@@ -67,6 +86,8 @@ class TestSerialization:
     def test_defaults_from_empty_dict(self):
         macro = MacroFile.from_dict({})
         assert macro.settings.repeat_count == 1
+        assert macro.settings.pause_hotkey == ""
+        assert macro.settings.speed_percent == 100
         assert macro.initial == []
         assert macro.loop == []
         assert macro.final == []
@@ -77,3 +98,13 @@ class TestSerialization:
         assert "drag_to" not in data
         assert "repeat_offset" not in data
         assert "condition" not in data
+        assert "app_path" not in data
+
+    def test_condition_without_image_omits_image_key(self):
+        condition = Condition(ConditionType.WINDOW_SHOWN_WAIT, "メモ帳")
+        assert "image" not in condition.to_dict()
+
+    def test_legacy_condition_without_image_loads(self):
+        # 旧形式の.par（imageキーなし）が読み込めること
+        condition = Condition.from_dict({"type": "window_shown_wait", "value": "x"})
+        assert condition.image == ""

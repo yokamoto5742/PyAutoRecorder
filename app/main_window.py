@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 
 from app import constants
 from app.item_editor_dialog import ItemEditorDialog
+from app.options_dialog import OptionsDialog
 from app.recorder_child_window import RecorderChildWindow
 from app.recording_stop_button import RecordingStopButton
 from app.timer_dialog import TimerDialog
@@ -31,6 +32,7 @@ from service.hotkey_manager import (
     DEFAULT_PAUSE_KEY,
     DEFAULT_PLAY_STOP_KEY,
     HotkeyManager,
+    SingleHotkeyListener,
 )
 from service.models import ActionItem, ActionType, MacroFile
 from service.player import MacroPlayer
@@ -56,6 +58,7 @@ class MainWindow(QMainWindow):
         self._dirty = False
         self._recorder: MacroRecorder | None = None
         self._player: MacroPlayer | None = None
+        self._pause_hotkey_listener: SingleHotkeyListener | None = None
         self._child_window: RecorderChildWindow | None = None
         self._auto_quit_after_playback = launch_file_path is not None
 
@@ -114,6 +117,7 @@ class MainWindow(QMainWindow):
         toolbar.addAction(constants.TOOLBAR_STOP, self._stop_playback)
         toolbar.addSeparator()
         toolbar.addAction(constants.TOOLBAR_TIMER, self._edit_timers)
+        toolbar.addAction(constants.TOOLBAR_OPTIONS, self._edit_options)
 
     def _build_record_button(self) -> QToolButton:
         button = QToolButton()
@@ -330,9 +334,22 @@ class MainWindow(QMainWindow):
         self._player = MacroPlayer(self._macro)
         self._player.playback_finished.connect(self._on_playback_finished)
         self._player.error_occurred.connect(self._on_playback_error)
+        self._start_pause_hotkey_listener()
         if not self._auto_quit_after_playback:
             self.showMinimized()
         self._player.start()
+
+    def _start_pause_hotkey_listener(self) -> None:
+        if self._macro.settings.pause_hotkey:
+            self._pause_hotkey_listener = SingleHotkeyListener(
+                self._macro.settings.pause_hotkey, self.hotkey_pause.emit
+            )
+            self._pause_hotkey_listener.start()
+
+    def _stop_pause_hotkey_listener(self) -> None:
+        if self._pause_hotkey_listener is not None:
+            self._pause_hotkey_listener.stop()
+            self._pause_hotkey_listener = None
 
     def _stop_playback(self) -> None:
         if self._player is not None:
@@ -351,6 +368,7 @@ class MainWindow(QMainWindow):
             self._player.toggle_pause()
 
     def _on_playback_finished(self, completed: bool) -> None:
+        self._stop_pause_hotkey_listener()
         if self._player is not None:
             self._player.wait()
             self._player = None
@@ -456,6 +474,12 @@ class MainWindow(QMainWindow):
             self._configure_scheduler()
             self._set_dirty()
 
+    def _edit_options(self) -> None:
+        dialog = OptionsDialog(self._macro.settings, self)
+        if dialog.exec():
+            dialog.apply_to(self._macro.settings)
+            self._set_dirty()
+
     def _on_timer_play(self) -> None:
         if not self._is_playing() and self._recorder is None:
             self.statusBar().showMessage(constants.MSG_TIMER_PLAY_STARTED, 5000)
@@ -510,6 +534,7 @@ class MainWindow(QMainWindow):
             return
         self._tray.hide()
         self._hotkeys.stop()
+        self._stop_pause_hotkey_listener()
         if self._recorder is not None:
             self._recorder.stop()
         if self._player is not None:
