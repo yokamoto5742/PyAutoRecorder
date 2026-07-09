@@ -23,7 +23,7 @@ from PySide6.QtWidgets import (
 )
 
 from app import constants
-from app.image_capture_dialog import capture_screen_region
+from app.image_capture_dialog import capture_screen_region, load_image_file
 from service.key_notation import SPECIAL_KEYS, parse
 from service.models import ActionItem, ActionType, Condition, ConditionType
 
@@ -122,12 +122,12 @@ class ItemEditorDialog(QDialog):
         return box
 
     @staticmethod
-    def _pair(first: QWidget, second: QWidget) -> QWidget:
+    def _pair(*widgets: QWidget) -> QWidget:
         container = QWidget()
         row = QHBoxLayout(container)
         row.setContentsMargins(0, 0, 0, 0)
-        row.addWidget(first)
-        row.addWidget(second)
+        for widget in widgets:
+            row.addWidget(widget)
         return container
 
     def _build_key_buttons(self) -> QWidget:
@@ -174,10 +174,14 @@ class ItemEditorDialog(QDialog):
         self._condition_image = condition.image if condition else ""
         self._capture_button = QPushButton(constants.BUTTON_CAPTURE_IMAGE)
         self._capture_button.clicked.connect(self._capture_image)
+        self._load_image_button = QPushButton(constants.BUTTON_LOAD_IMAGE)
+        self._load_image_button.clicked.connect(self._load_image)
         self._image_preview = QLabel()
         form.addRow(
             constants.LABEL_CONDITION_IMAGE,
-            self._pair(self._capture_button, self._image_preview),
+            self._pair(
+                self._capture_button, self._load_image_button, self._image_preview
+            ),
         )
         self._update_image_preview()
 
@@ -196,6 +200,12 @@ class ItemEditorDialog(QDialog):
 
     def _capture_image(self) -> None:
         image = capture_screen_region(self)
+        if image:
+            self._condition_image = image
+            self._update_image_preview()
+
+    def _load_image(self) -> None:
+        image = load_image_file(self)
         if image:
             self._condition_image = image
             self._update_image_preview()
@@ -226,6 +236,7 @@ class ItemEditorDialog(QDialog):
         is_image = self._is_image_condition()
         self._condition_value.setEnabled(not is_image)
         self._capture_button.setEnabled(is_image)
+        self._load_image_button.setEnabled(is_image)
 
     def _on_accept(self) -> None:
         try:

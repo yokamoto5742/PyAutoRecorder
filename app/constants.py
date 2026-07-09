@@ -147,6 +147,10 @@ LABEL_CONDITION_IMAGE = "認識する画像:"
 MSG_IMAGE_REQUIRED = "認識する画像を取得してください。"
 DIALOG_CAPTURE_TITLE = "認識する画像の選択"
 MSG_CAPTURE_INSTRUCTION = "認識する範囲をドラッグで選択してください（Escで中止）"
+BUTTON_LOAD_IMAGE = "画像ファイルを選択"
+DIALOG_LOAD_IMAGE_TITLE = "画像ファイルの選択"
+FILTER_IMAGE_FILES = "画像ファイル (*.png *.jpg *.jpeg *.bmp);;すべてのファイル (*.*)"
+MSG_IMAGE_LOAD_FAILED = "画像ファイルを読み込めませんでした。"
 
 # 子機
 CHILD_WINDOW_TITLE = "子機"
