@@ -11,7 +11,7 @@ def main() -> None:
     file_path = sys.argv[1] if len(sys.argv) > 1 else None
 
     if file_path and forward_to_running_instance(file_path):
-        return  # 既存インスタンスに転送済みのため、このプロセスは何もせず終了する
+        return
 
     window = MainWindow(launch_file_path=file_path)
     if file_path is None:
