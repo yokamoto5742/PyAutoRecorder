@@ -86,7 +86,7 @@ class Condition:
 
 @dataclass
 class ActionItem:
-    interval: float = 1.0
+    interval: int = 1
     x: int | None = None
     y: int | None = None
     action: ActionType = ActionType.NONE
@@ -127,7 +127,8 @@ class ActionItem:
         condition = data.get("condition")
         selector = data.get("selector")
         return cls(
-            interval=float(data.get("interval", 1.0)),
+            # 旧形式（小数の間隔）は四捨五入して整数へ変換する
+            interval=round(float(data.get("interval", 1))),
             x=data.get("x"),
             y=data.get("y"),
             action=ActionType(data.get("action", "none")),

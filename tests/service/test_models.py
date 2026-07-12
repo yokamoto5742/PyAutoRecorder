@@ -20,9 +20,9 @@ def build_sample_macro() -> MacroFile:
             speed_percent=150,
         ),
         initial=[
-            ActionItem(interval=1.0, x=100, y=200, action=ActionType.LEFT_CLICK),
+            ActionItem(interval=1, x=100, y=200, action=ActionType.LEFT_CLICK),
             ActionItem(
-                interval=1.0,
+                interval=1,
                 x=240,
                 y=80,
                 action=ActionType.LEFT_CLICK,
@@ -33,7 +33,7 @@ def build_sample_macro() -> MacroFile:
                 ),
             ),
             ActionItem(
-                interval=0.5,
+                interval=1,
                 action=ActionType.SET_TEXT,
                 keys="診療情報提供書",
                 selector=UiSelector(
@@ -45,7 +45,7 @@ def build_sample_macro() -> MacroFile:
         ],
         loop=[
             ActionItem(
-                interval=0.5,
+                interval=1,
                 x=300,
                 y=400,
                 action=ActionType.DOUBLE_CLICK,
@@ -59,7 +59,7 @@ def build_sample_macro() -> MacroFile:
                 ),
             ),
             ActionItem(
-                interval=2.0,
+                interval=2,
                 x=10,
                 y=20,
                 action=ActionType.DRAG,
@@ -67,14 +67,14 @@ def build_sample_macro() -> MacroFile:
             ),
         ],
         final=[
-            ActionItem(interval=1.0, action=ActionType.KEY_ONLY, keys="%{F4}"),
+            ActionItem(interval=1, action=ActionType.KEY_ONLY, keys="%{F4}"),
             ActionItem(
-                interval=0.5,
+                interval=1,
                 action=ActionType.LAUNCH_APP,
                 app_path=r"C:\Shinseikai\TextFileLog\TextFileLog.exe",
             ),
             ActionItem(
-                interval=1.0,
+                interval=1,
                 action=ActionType.NONE,
                 condition=Condition(
                     condition_type=ConditionType.IMAGE_SHOWN_WAIT,
@@ -115,7 +115,7 @@ class TestSerialization:
         assert macro.final == []
 
     def test_minimal_item_omits_optional_fields(self):
-        item = ActionItem(interval=1.0, x=1, y=2, action=ActionType.LEFT_CLICK)
+        item = ActionItem(interval=1, x=1, y=2, action=ActionType.LEFT_CLICK)
         data = item.to_dict()
         assert "drag_to" not in data
         assert "repeat_offset" not in data
@@ -127,6 +127,11 @@ class TestSerialization:
         # 旧形式の.par（selectorキーなし）が読み込めること
         item = ActionItem.from_dict({"interval": 1.0, "x": 1, "y": 2, "action": "left"})
         assert item.selector is None
+
+    def test_legacy_float_interval_rounds_to_int(self):
+        # 旧形式の.par（小数の間隔）は四捨五入して整数へ変換されること
+        item = ActionItem.from_dict({"interval": 1.4, "action": "none"})
+        assert item.interval == 1
 
     def test_condition_without_image_omits_image_key(self):
         condition = Condition(ConditionType.WINDOW_SHOWN_WAIT, "メモ帳")

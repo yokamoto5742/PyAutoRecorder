@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMenu,
     QMessageBox,
+    QPushButton,
     QSpinBox,
     QTabWidget,
     QToolBar,
@@ -144,6 +145,15 @@ class MainWindow(QMainWindow):
         self._repeat_spin.setRange(1, 2_000_000_000)
         self._repeat_spin.valueChanged.connect(self._on_repeat_count_changed)
         repeat_row.addWidget(self._repeat_spin)
+        repeat_row.addSpacing(20)
+        repeat_row.addWidget(QLabel(constants.LABEL_BULK_INTERVAL))
+        self._bulk_interval_spin = QSpinBox()
+        self._bulk_interval_spin.setRange(0, 99999)
+        self._bulk_interval_spin.setValue(0)
+        repeat_row.addWidget(self._bulk_interval_spin)
+        bulk_button = QPushButton(constants.BUTTON_BULK_INTERVAL)
+        bulk_button.clicked.connect(self._apply_bulk_interval)
+        repeat_row.addWidget(bulk_button)
         repeat_row.addStretch()
         layout.addLayout(repeat_row)
 
@@ -157,7 +167,7 @@ class MainWindow(QMainWindow):
             self._tabs.addTab(tree, title)
         layout.addWidget(self._tabs)
         self.setCentralWidget(central)
-        self.resize(800, 500)
+        self.resize(*self._config.get_window_size("main", (800, 500)))
 
     def _build_tree(self) -> QTreeWidget:
         tree = QTreeWidget()
@@ -201,7 +211,7 @@ class MainWindow(QMainWindow):
         )
         row = QTreeWidgetItem(
             [
-                f"{item.interval:.2f}",
+                str(item.interval),
                 "" if item.x is None else str(item.x),
                 "" if item.y is None else str(item.y),
                 constants.ACTION_LABELS[item.action.value],
@@ -286,6 +296,21 @@ class MainWindow(QMainWindow):
             self._macro.settings.repeat_count = value
             self._set_dirty()
 
+    def _apply_bulk_interval(self) -> None:
+        """表示中のタブの全項目の間隔(秒)を指定値に一括設定する。"""
+        page = self._current_page()
+        items = getattr(self._macro, page)
+        if not items:
+            return
+        value = self._bulk_interval_spin.value()
+        for item in items:
+            item.interval = value
+        self._refresh_tree(page)
+        self._set_dirty()
+        self.statusBar().showMessage(
+            constants.MSG_BULK_INTERVAL_APPLIED.format(value=value), 5000
+        )
+
     # --- 記録 ---
 
     def _start_auto_recording(self) -> None:
@@ -328,7 +353,7 @@ class MainWindow(QMainWindow):
         self._workflow_editor.activateWindow()
 
     def _add_manual_key_item(self) -> None:
-        item = ActionItem(interval=1.0, action=ActionType.KEY_ONLY)
+        item = ActionItem(interval=1, action=ActionType.KEY_ONLY)
         dialog = ItemEditorDialog(item, self)
         if dialog.exec():
             self.add_item_to_current_page(dialog.edited_item())

@@ -73,7 +73,7 @@ class WorkflowEditorWindow(QMainWindow):
         self._build_central()
         self._update_window_title()
         self.statusBar()
-        self.resize(700, 500)
+        self.resize(*self._config.get_window_size("workflow_editor", (700, 500)))
 
     # --- UI構築 ---
 

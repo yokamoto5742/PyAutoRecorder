@@ -36,7 +36,7 @@ class WorkflowRunnerWindow(QMainWindow):
         self._player: WorkflowPlayer | None = None
         self.setWindowTitle(constants.WORKFLOW_RUNNER_TITLE)
         self._build_ui()
-        self.resize(800, 500)
+        self.resize(*self._config.get_window_size("workflow_runner", (800, 500)))
         self._refresh_bundles()
 
     # --- UI構築 ---

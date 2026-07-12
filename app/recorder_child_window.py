@@ -8,7 +8,7 @@ from collections.abc import Callable
 
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QColor, QMouseEvent, QMoveEvent, QPainter, QPaintEvent
-from PySide6.QtWidgets import QDoubleSpinBox, QLabel, QMenu, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QLabel, QMenu, QSpinBox, QVBoxLayout, QWidget
 
 from app import constants
 from service.models import ActionItem, ActionType
@@ -41,10 +41,9 @@ class RecorderChildWindow(QWidget):
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(_POINTER_SIZE + 4, _POINTER_SIZE + 4, 4, 4)
-        self._interval_spin = QDoubleSpinBox()
-        self._interval_spin.setRange(0.0, 99999.0)
-        self._interval_spin.setDecimals(2)
-        self._interval_spin.setValue(1.0)
+        self._interval_spin = QSpinBox()
+        self._interval_spin.setRange(0, 99999)
+        self._interval_spin.setValue(1)
         layout.addWidget(self._interval_spin)
         self._coords_label = QLabel()
         self._coords_label.setAlignment(Qt.AlignmentFlag.AlignCenter)

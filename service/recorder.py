@@ -79,7 +79,7 @@ class MacroRecorder:
         self._lock = threading.Lock()
         self._last_event_time = 0.0
         self._key_buffer = ""
-        self._key_interval = 0.0
+        self._key_interval = 0
         self._active_modifiers: dict[
             str, bool
         ] = {}  # prefix -> 他キーと組み合わされたか
@@ -160,7 +160,7 @@ class MacroRecorder:
         press_x, press_y = self._press_pos  # type: ignore[misc]
         press_selector = self._press_selector
         self._press_selector = None
-        interval = round(self._press_interval, 2)
+        interval = round(self._press_interval)
         moved = (
             abs(x - press_x) > DRAG_THRESHOLD_PX or abs(y - press_y) > DRAG_THRESHOLD_PX
         )
@@ -240,7 +240,7 @@ class MacroRecorder:
     def _append_keys(self, tokens: str) -> None:
         now = time.monotonic()
         if not self._key_buffer:
-            self._key_interval = round(now - self._last_event_time, 2)
+            self._key_interval = round(now - self._last_event_time)
         self._last_event_time = now
         self._key_buffer += tokens
         if len(self._key_buffer) >= MAX_KEYS_PER_ITEM:

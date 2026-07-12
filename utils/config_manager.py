@@ -62,6 +62,15 @@ class ConfigManager:
         self.config["Paths"]["tesseract_path"] = str(path_obj)
         self.save_config()
 
+    def get_window_size(self, key: str, default: tuple[int, int]) -> tuple[int, int]:
+        """[WindowSize]から「幅,高さ」形式の初期サイズを取得する。不正値はdefaultを返す。"""
+        value = self.config.get("WindowSize", key, fallback="")
+        try:
+            width, height = (int(v.strip()) for v in value.split(","))
+            return width, height
+        except ValueError:
+            return default
+
     def set_value(self, section: str, key: str, value: str) -> None:
         self._ensure_section(section)
         self.config[section][key] = value

@@ -10,7 +10,6 @@ from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
     QDialogButtonBox,
-    QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
     QGroupBox,
@@ -76,9 +75,8 @@ class ItemEditorDialog(QDialog):
 
     def _build_form(self, item: ActionItem) -> QFormLayout:
         form = QFormLayout()
-        self._interval = QDoubleSpinBox()
-        self._interval.setRange(0.0, 99999.0)
-        self._interval.setDecimals(2)
+        self._interval = QSpinBox()
+        self._interval.setRange(0, 99999)
         self._interval.setValue(item.interval)
         form.addRow(constants.LABEL_INTERVAL, self._interval)
 
