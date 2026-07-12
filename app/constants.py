@@ -49,6 +49,8 @@ ACTION_LABELS = {
     "drag": "ドラッグ",
     "key_only": "キーOnly",
     "launch_app": "アプリ起動",
+    "set_text": "テキスト書込(UIA)",
+    "get_text": "テキスト読取(UIA)",
 }
 
 # ファイルダイアログ
@@ -113,8 +115,10 @@ CONDITION_LABELS = {
     "button_hidden_wait": "次のボタンが消えるまで待機",
     "button_shown_skip": "次のボタンが表示されていればスキップ",
     "button_not_shown_skip": "次のボタンが表示されていなければスキップ",
+    "button_enabled_wait": "次のボタンが有効になるまで待機",
     "image_shown_wait": "次の画像が表示されるまで待機",
 }
+_BUTTON_SPEC_HINT = "ボタン名 or id:AutomationId[,親タイトル or id:… or class:…]"
 CONDITION_VALUE_HINTS = {
     "window_shown_wait": 'タイトル名（"..."で完全一致）',
     "window_closed_wait": 'タイトル名（"..."で完全一致）',
@@ -134,12 +138,30 @@ CONDITION_VALUE_HINTS = {
     "datetime_wait": "YYYY-MM-DD HH:MM または HH:MM",
     "datetime_match_run": "HH:MM",
     "repeat_index_run": "例: 2|5|17、奇数、偶数、7n",
-    "button_shown_wait": "ボタン名[,親タイトル or class:クラス名]",
-    "button_hidden_wait": "ボタン名[,親タイトル or class:クラス名]",
-    "button_shown_skip": "ボタン名[,親タイトル or class:クラス名]",
-    "button_not_shown_skip": "ボタン名[,親タイトル or class:クラス名]",
+    "button_shown_wait": _BUTTON_SPEC_HINT,
+    "button_hidden_wait": _BUTTON_SPEC_HINT,
+    "button_shown_skip": _BUTTON_SPEC_HINT,
+    "button_not_shown_skip": _BUTTON_SPEC_HINT,
+    "button_enabled_wait": _BUTTON_SPEC_HINT,
     "image_shown_wait": "「画像を取得」で認識する画像を設定",
 }
+
+# 対象コントロール（UIA要素指定）
+GROUP_SELECTOR = "対象コントロール（UIA・クリック時は座標より優先）"
+LABEL_SELECTOR_AUTOMATION_ID = "AutomationId:"
+LABEL_SELECTOR_NAME = "Name:"
+LABEL_SELECTOR_CONTROL_TYPE = "コントロール種別:"
+LABEL_SELECTOR_WINDOW_ID = "ウィンドウAutomationId:"
+LABEL_SELECTOR_WINDOW_NAME = "ウィンドウ名(部分一致):"
+LABEL_SELECTOR_INDEX = "一致順(1始まり):"
+BUTTON_PICK_ELEMENT = "画面から取得"
+BUTTON_PICK_COUNTDOWN = "対象にカーソルを合わせてください({sec})"
+MSG_PICK_FAILED = (
+    "コントロール情報を取得できませんでした。"
+    "AutomationIdもNameも持たないコントロールの可能性があります。"
+)
+MSG_SELECTOR_REQUIRED = "対象コントロールのAutomationIdまたはNameを指定してください。"
+HINT_SET_TEXT_KEYS = "書き込むテキスト（そのまま書き込まれます）"
 
 # 画像認識
 BUTTON_CAPTURE_IMAGE = "画像を取得"

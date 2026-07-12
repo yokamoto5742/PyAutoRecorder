@@ -4,21 +4,26 @@
 - press→release間の移動が閾値を超えたらドラッグとして記録する
 - 短時間・近接の左クリック2回はダブルクリック1項目にまとめる
 - 連続するキー入力は1項目のトークン文字列にまとめ、クリックで区切る
+- クリック時は座標のUIA要素情報（セレクタ）もワーカースレッドで取得し、
+  停止時にクリック項目へ付与する（ハイブリッド記録）
 """
 
 import threading
 import time
 from collections.abc import Callable
+from concurrent.futures import Future, ThreadPoolExecutor
 
 from pynput import keyboard, mouse
 
 from service.key_notation import escape_char
 from service.models import ActionItem, ActionType
+from service.ui_selector import selector_from_point
 
 DRAG_THRESHOLD_PX = 10
 DOUBLE_CLICK_SEC = 0.4
 DOUBLE_CLICK_DISTANCE_PX = 5
 MAX_KEYS_PER_ITEM = 200  # 1項目に記録するキーボード操作の上限（資料準拠）
+SELECTOR_RESULT_TIMEOUT_SEC = 3.0  # 停止時にセレクタ取得を待つ上限
 
 _MODIFIER_PREFIXES: dict[keyboard.Key, str] = {
     keyboard.Key.shift: "+",
@@ -83,10 +88,15 @@ class MacroRecorder:
         self._last_click_time = 0.0
         self._mouse_listener: mouse.Listener | None = None
         self._keyboard_listener: keyboard.Listener | None = None
+        self._selector_executor: ThreadPoolExecutor | None = None
+        self._press_selector: Future | None = None
+        self._pending_selectors: list[tuple[ActionItem, Future]] = []
 
     def start(self) -> None:
         self._items.clear()
+        self._pending_selectors.clear()
         self._last_event_time = time.monotonic()
+        self._selector_executor = ThreadPoolExecutor(max_workers=1)
         self._mouse_listener = mouse.Listener(on_click=self._on_click)
         self._keyboard_listener = keyboard.Listener(
             on_press=self._on_key_press, on_release=self._on_key_release
@@ -103,7 +113,22 @@ class MacroRecorder:
             self._keyboard_listener = None
         with self._lock:
             self._flush_key_buffer()
-            return list(self._items)
+            items = list(self._items)
+        self._attach_selectors()
+        return items
+
+    def _attach_selectors(self) -> None:
+        """ワーカーで取得したUIA要素情報をクリック項目へ付与する。"""
+        if self._selector_executor is None:
+            return
+        for item, future in self._pending_selectors:
+            try:
+                item.selector = future.result(timeout=SELECTOR_RESULT_TIMEOUT_SEC)
+            except Exception:
+                item.selector = None  # 取得失敗時は従来どおり座標のみで記録する
+        self._selector_executor.shutdown(wait=False)
+        self._selector_executor = None
+        self._pending_selectors.clear()
 
     # --- マウス ---
 
@@ -118,6 +143,11 @@ class MacroRecorder:
                 self._press_pos = (int(x), int(y))
                 self._press_interval = now - self._last_event_time
                 self._last_event_time = now
+                # クリックでUIが変化する前に要素を特定するため押下時点で取得を開始する
+                if self._selector_executor is not None:
+                    self._press_selector = self._selector_executor.submit(
+                        selector_from_point, int(x), int(y)
+                    )
                 return
             if self._press_pos is None:
                 return
@@ -128,6 +158,8 @@ class MacroRecorder:
 
     def _add_mouse_item(self, x: int, y: int, button: mouse.Button, now: float) -> None:
         press_x, press_y = self._press_pos  # type: ignore[misc]
+        press_selector = self._press_selector
+        self._press_selector = None
         interval = round(self._press_interval, 2)
         moved = (
             abs(x - press_x) > DRAG_THRESHOLD_PX or abs(y - press_y) > DRAG_THRESHOLD_PX
@@ -144,10 +176,11 @@ class MacroRecorder:
             )
             return
         if button == mouse.Button.left and self._merge_double_click(x, y, now):
-            return
-        self._items.append(
-            ActionItem(interval=interval, x=x, y=y, action=_MOUSE_ACTIONS[button])
-        )
+            return  # 統合先（1回目のクリック）のセレクタをそのまま使う
+        item = ActionItem(interval=interval, x=x, y=y, action=_MOUSE_ACTIONS[button])
+        self._items.append(item)
+        if press_selector is not None:
+            self._pending_selectors.append((item, press_selector))
         self._last_click_time = now
 
     def _merge_double_click(self, x: int, y: int, now: float) -> bool:

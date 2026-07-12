@@ -8,6 +8,7 @@ from service.models import (
     MacroFile,
     MacroSettings,
 )
+from service.ui_selector import UiSelector
 
 
 def build_sample_macro() -> MacroFile:
@@ -20,6 +21,27 @@ def build_sample_macro() -> MacroFile:
         ),
         initial=[
             ActionItem(interval=1.0, x=100, y=200, action=ActionType.LEFT_CLICK),
+            ActionItem(
+                interval=1.0,
+                x=240,
+                y=80,
+                action=ActionType.LEFT_CLICK,
+                selector=UiSelector(
+                    window_automation_id="FormPat",
+                    control_type="ButtonControl",
+                    automation_id="OpeClearButton",
+                ),
+            ),
+            ActionItem(
+                interval=0.5,
+                action=ActionType.SET_TEXT,
+                keys="診療情報提供書",
+                selector=UiSelector(
+                    window_automation_id="FormPat",
+                    control_type="ComboBoxControl",
+                    automation_id="SumDiagBox",
+                ),
+            ),
         ],
         loop=[
             ActionItem(
@@ -99,6 +121,12 @@ class TestSerialization:
         assert "repeat_offset" not in data
         assert "condition" not in data
         assert "app_path" not in data
+        assert "selector" not in data
+
+    def test_legacy_item_without_selector_loads(self):
+        # 旧形式の.par（selectorキーなし）が読み込めること
+        item = ActionItem.from_dict({"interval": 1.0, "x": 1, "y": 2, "action": "left"})
+        assert item.selector is None
 
     def test_condition_without_image_omits_image_key(self):
         condition = Condition(ConditionType.WINDOW_SHOWN_WAIT, "メモ帳")

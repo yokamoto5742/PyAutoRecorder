@@ -4,6 +4,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+from service.ui_selector import UiSelector
+
 FILE_EXTENSION = ".par"
 
 
@@ -16,6 +18,8 @@ class ActionType(Enum):
     DRAG = "drag"
     KEY_ONLY = "key_only"
     LAUNCH_APP = "launch_app"
+    SET_TEXT = "set_text"  # UIA要素にテキストを直接書き込む（keysが書き込む文字列）
+    GET_TEXT = "get_text"  # UIA要素のテキストをクリップボードへ読み取る
 
 
 class ConditionType(Enum):
@@ -43,11 +47,12 @@ class ConditionType(Enum):
     DATETIME_MATCH_RUN = "datetime_match_run"
     # 繰り返し回目（value="2|5|17"、"奇数"、"偶数"、"7n"）
     REPEAT_INDEX_RUN = "repeat_index_run"
-    # ボタン（value="ボタン名[,親ウィンドウのタイトル or class:クラス名]"）
+    # ボタン（value="ボタン名 or id:AutomationId[,親タイトル or id:… or class:…]"）
     BUTTON_SHOWN_WAIT = "button_shown_wait"
     BUTTON_HIDDEN_WAIT = "button_hidden_wait"
     BUTTON_SHOWN_SKIP = "button_shown_skip"
     BUTTON_NOT_SHOWN_SKIP = "button_not_shown_skip"
+    BUTTON_ENABLED_WAIT = "button_enabled_wait"
     # 画像認識（imageフィールドのbase64 PNGが画面に表示されるまで待機）
     IMAGE_SHOWN_WAIT = "image_shown_wait"
 
@@ -91,6 +96,7 @@ class ActionItem:
     key_repeat_increase: bool = False  # 繰り返すたびにキー操作の実行回数を増加
     condition: Condition | None = None
     app_path: str = ""  # LAUNCH_APP時に起動するアプリのフルパス
+    selector: UiSelector | None = None  # UIA要素指定。クリック時は座標より優先
 
     def to_dict(self) -> dict[str, Any]:
         data: dict[str, Any] = {
@@ -110,6 +116,8 @@ class ActionItem:
             data["condition"] = self.condition.to_dict()
         if self.app_path:
             data["app_path"] = self.app_path
+        if self.selector is not None:
+            data["selector"] = self.selector.to_dict()
         return data
 
     @classmethod
@@ -117,6 +125,7 @@ class ActionItem:
         drag_to = data.get("drag_to")
         repeat_offset = data.get("repeat_offset", [0, 0])
         condition = data.get("condition")
+        selector = data.get("selector")
         return cls(
             interval=float(data.get("interval", 1.0)),
             x=data.get("x"),
@@ -128,6 +137,7 @@ class ActionItem:
             key_repeat_increase=bool(data.get("key_repeat_increase", False)),
             condition=Condition.from_dict(condition) if condition else None,
             app_path=data.get("app_path", ""),
+            selector=UiSelector.from_dict(selector) if selector else None,
         )
 
 

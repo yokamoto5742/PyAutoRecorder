@@ -169,6 +169,17 @@ class TestShouldRun:
         wait = Condition(ConditionType.BUTTON_HIDDEN_WAIT, "OK", max_wait_sec=5)
         assert should_run(wait, ConditionContext())
 
+    def test_button_enabled_wait_returns_immediately_when_enabled(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        monkeypatch.setattr(
+            conditions, "button_enabled", lambda name, title, cls: name == "id:SaveBtn"
+        )
+        wait = Condition(
+            ConditionType.BUTTON_ENABLED_WAIT, "id:SaveBtn,id:FormPat", max_wait_sec=5
+        )
+        assert should_run(wait, ConditionContext())
+
     def test_image_shown_wait(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(conditions, "image_shown", lambda image: image == "abc")
         wait = Condition(ConditionType.IMAGE_SHOWN_WAIT, image="abc")

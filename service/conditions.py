@@ -63,21 +63,51 @@ def get_pixel_color(x: int | None, y: int | None) -> tuple[int, int, int]:
     return pyautogui.pixel(x, y)
 
 
-def button_shown(button_name: str, parent_title: str, parent_class: str) -> bool:
-    """UI Automationでボタンの表示状態を判定する（親ウィンドウ指定は省略可）。"""
+def _query_button(
+    button_name: str, parent_title: str, parent_class: str, check
+) -> bool:
+    """UI Automationでボタンを探してcheckを適用する（親ウィンドウ指定は省略可）。
+
+    ボタン名・親タイトルは "id:AutomationId" 形式でAutomationId指定もできる
+    （ウィンドウタイトルが患者名等で変動するアプリ向け）。
+    """
     import uiautomation
 
     # 再生スレッドから呼ばれるためスレッドごとにCOMを初期化する
     with uiautomation.UIAutomationInitializerInThread():
         for window in uiautomation.GetRootControl().GetChildren():
-            if parent_title and not title_matches([window.Name], parent_title):
-                continue
+            if parent_title:
+                if parent_title.startswith("id:"):
+                    if window.AutomationId != parent_title[len("id:") :]:
+                        continue
+                elif not title_matches([window.Name], parent_title):
+                    continue
             if parent_class and window.ClassName != parent_class:
                 continue
-            button = window.ButtonControl(searchDepth=0xFFFFFFFF, Name=button_name)
+            if button_name.startswith("id:"):
+                button = window.ButtonControl(
+                    searchDepth=0xFFFFFFFF, AutomationId=button_name[len("id:") :]
+                )
+            else:
+                button = window.ButtonControl(searchDepth=0xFFFFFFFF, Name=button_name)
             if button.Exists(maxSearchSeconds=0, searchIntervalSeconds=0):
-                return not button.IsOffscreen
+                return check(button)
     return False
+
+
+def button_shown(button_name: str, parent_title: str, parent_class: str) -> bool:
+    return _query_button(
+        button_name, parent_title, parent_class, lambda b: not b.IsOffscreen
+    )
+
+
+def button_enabled(button_name: str, parent_title: str, parent_class: str) -> bool:
+    return _query_button(
+        button_name,
+        parent_title,
+        parent_class,
+        lambda b: not b.IsOffscreen and b.IsEnabled,
+    )
 
 
 def image_shown(image_base64: str) -> bool:
@@ -259,12 +289,18 @@ def _button_shown(condition: Condition) -> bool:
     return button_shown(*parse_button_spec(condition.value))
 
 
+def _button_enabled(condition: Condition) -> bool:
+    return button_enabled(*parse_button_spec(condition.value))
+
+
 def _handle_button(condition: Condition, context: ConditionContext) -> bool:
     kind = condition.condition_type
     if kind == ConditionType.BUTTON_SHOWN_WAIT:
         return _wait_until(lambda: _button_shown(condition), condition, context)
     if kind == ConditionType.BUTTON_HIDDEN_WAIT:
         return _wait_until(lambda: not _button_shown(condition), condition, context)
+    if kind == ConditionType.BUTTON_ENABLED_WAIT:
+        return _wait_until(lambda: _button_enabled(condition), condition, context)
     if kind == ConditionType.BUTTON_SHOWN_SKIP:
         return not _button_shown(condition)
     return _button_shown(condition)  # BUTTON_NOT_SHOWN_SKIP
@@ -295,6 +331,7 @@ _HANDLERS = {
     ConditionType.REPEAT_INDEX_RUN: _handle_repeat_index,
     ConditionType.BUTTON_SHOWN_WAIT: _handle_button,
     ConditionType.BUTTON_HIDDEN_WAIT: _handle_button,
+    ConditionType.BUTTON_ENABLED_WAIT: _handle_button,
     ConditionType.BUTTON_SHOWN_SKIP: _handle_button,
     ConditionType.BUTTON_NOT_SHOWN_SKIP: _handle_button,
     ConditionType.IMAGE_SHOWN_WAIT: _handle_image,
