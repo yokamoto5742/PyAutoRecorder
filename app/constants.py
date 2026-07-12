@@ -221,6 +221,12 @@ MSG_FIELDS_CONFIRM = (
 )
 MSG_FIELDS_ERROR = "クリップボード変数を取り込めませんでした:\n{error}"
 
+# 操作手順書
+TOOLBAR_MANUAL = "手順書"
+MSG_MANUAL_SAVED = "操作手順書を保存しました: {path}"
+MSG_MANUAL_NO_FILE = "先にファイルを保存してください。"
+MSG_MANUAL_ERROR = "操作手順書を生成できませんでした: {error}"
+
 # ワークフロー（共通）
 TOOLBAR_WORKFLOW = "ワークフロー"
 WORKFLOW_STEP_TYPE_LABELS = {

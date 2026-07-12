@@ -38,6 +38,7 @@ from service.hotkey_manager import (
     SingleHotkeyListener,
 )
 from service.clipboard_fields import collect_var_specs
+from service.manual_generator import write_macro_manual
 from service.models import ActionItem, ActionType, MacroFile
 from service.player import MacroPlayer
 from service.recorder import MacroRecorder
@@ -123,6 +124,7 @@ class MainWindow(QMainWindow):
         toolbar.addSeparator()
         toolbar.addAction(constants.TOOLBAR_TIMER, self._edit_timers)
         toolbar.addAction(constants.TOOLBAR_OPTIONS, self._edit_options)
+        toolbar.addAction(constants.TOOLBAR_MANUAL, self._generate_manual)
         toolbar.addSeparator()
         toolbar.addAction(constants.TOOLBAR_WORKFLOW, self._show_workflow_editor)
 
@@ -501,6 +503,26 @@ class MainWindow(QMainWindow):
             return
         self._file_path = Path(path_str)
         self._save_file()
+
+    def _generate_manual(self) -> None:
+        """保存済みの.parから操作手順書(.md)を同じフォルダへ出力する。"""
+        if self._file_path is None or self._dirty:
+            QMessageBox.information(
+                self, constants.WINDOW_TITLE, constants.MSG_MANUAL_NO_FILE
+            )
+            return
+        try:
+            output_path = write_macro_manual(self._file_path)
+        except (OSError, ValueError, KeyError) as e:
+            QMessageBox.warning(
+                self,
+                constants.WINDOW_TITLE,
+                constants.MSG_MANUAL_ERROR.format(error=e),
+            )
+            return
+        self.statusBar().showMessage(
+            constants.MSG_MANUAL_SAVED.format(path=output_path), 5000
+        )
 
     # --- タイマー・トレイ ---
 

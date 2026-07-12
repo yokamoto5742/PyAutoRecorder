@@ -34,6 +34,7 @@ from PySide6.QtWidgets import (
 
 from app import constants
 from app.image_capture_dialog import capture_screen_region, load_image_file
+from service.manual_generator import write_bundle_manual
 from service.workflow import (
     BUNDLE_EXTENSION,
     WORKFLOW_FILENAME,
@@ -84,6 +85,7 @@ class WorkflowEditorWindow(QMainWindow):
         toolbar.addAction(constants.TOOLBAR_NEW, self._new_bundle)
         toolbar.addAction(constants.TOOLBAR_OPEN, self._open_bundle)
         toolbar.addAction(constants.TOOLBAR_SAVE, self._save_bundle)
+        toolbar.addAction(constants.TOOLBAR_MANUAL, self._generate_manual)
 
     def _build_central(self) -> None:
         central = QWidget()
@@ -317,6 +319,26 @@ class WorkflowEditorWindow(QMainWindow):
             )
             return
         self._set_dirty(False)
+
+    def _generate_manual(self) -> None:
+        """保存済みのバンドルから操作手順書(manual.md)をバンドル内へ出力する。"""
+        if self._bundle is None or self._dirty:
+            QMessageBox.information(
+                self, constants.WORKFLOW_EDITOR_TITLE, constants.MSG_MANUAL_NO_FILE
+            )
+            return
+        try:
+            output_path = write_bundle_manual(self._bundle.path)
+        except (OSError, ValueError, KeyError) as e:
+            QMessageBox.warning(
+                self,
+                constants.WORKFLOW_EDITOR_TITLE,
+                constants.MSG_MANUAL_ERROR.format(error=e),
+            )
+            return
+        self.statusBar().showMessage(
+            constants.MSG_MANUAL_SAVED.format(path=output_path), 5000
+        )
 
     def closeEvent(self, event: QCloseEvent) -> None:
         if not self._maybe_discard():
