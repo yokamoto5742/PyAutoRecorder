@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QSpinBox,
     QVBoxLayout,
     QWidget,
@@ -54,9 +55,17 @@ class ItemEditorDialog(QDialog):
         self.setWindowTitle(constants.DIALOG_EDIT_TITLE)
         self._item = item
         layout = QVBoxLayout(self)
-        layout.addLayout(self._build_form(item))
-        layout.addWidget(self._build_selector_group(item.selector))
-        layout.addWidget(self._build_condition_group(item.condition))
+        # 拡大率が高い環境でもOK/キャンセルボタンが隠れないよう、入力項目をスクロール領域に入れる
+        scroll_content = QWidget()
+        form_layout = QVBoxLayout(scroll_content)
+        form_layout.addLayout(self._build_form(item))
+        form_layout.addWidget(self._build_selector_group(item.selector))
+        form_layout.addWidget(self._build_condition_group(item.condition))
+        scroll_area = QScrollArea(self)
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setStyleSheet("QScrollArea { border: none; }")
+        scroll_area.setWidget(scroll_content)
+        layout.addWidget(scroll_area)
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
         )
