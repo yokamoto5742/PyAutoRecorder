@@ -41,6 +41,7 @@ _INSERT_BUTTONS = [
     ("Ctrl+", "^"),
     ("Alt+", "%"),
     ("Win+", "`"),
+    ("変数", "{VAR:}"),
     ("Wait", "{WAIT}"),
     ("Clip", "{CLIP}"),
     ("Clear", "{CLEAR}"),

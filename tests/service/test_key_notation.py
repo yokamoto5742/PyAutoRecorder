@@ -86,6 +86,29 @@ class TestParse:
         assert parse("") == []
 
 
+class TestVarToken:
+    def test_var_plain(self):
+        assert parse("{VAR:術者}") == [KeyToken(kind="var", value="術者")]
+
+    def test_var_with_format(self):
+        assert parse("{VAR:手術日:日付}") == [KeyToken(kind="var", value="手術日:日付")]
+
+    def test_var_mixed_with_keys(self):
+        tokens = parse("{VAR:病室}{TAB}")
+        assert tokens == [
+            KeyToken(kind="var", value="病室"),
+            KeyToken(kind="key", value="tab"),
+        ]
+
+    def test_var_empty_name_raises(self):
+        with pytest.raises(ValueError):
+            parse("{VAR:}")
+
+    def test_var_with_modifier_raises(self):
+        with pytest.raises(ValueError):
+            parse("^{VAR:術者}")
+
+
 class TestEscape:
     def test_escape_plain(self):
         assert escape_text("abc") == "abc"

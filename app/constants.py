@@ -164,7 +164,7 @@ MSG_PICK_FAILED = (
     "AutomationIdもNameも持たないコントロールの可能性があります。"
 )
 MSG_SELECTOR_REQUIRED = "対象コントロールのAutomationIdまたはNameを指定してください。"
-HINT_SET_TEXT_KEYS = "書き込むテキスト（そのまま書き込まれます）"
+HINT_SET_TEXT_KEYS = "書き込むテキスト（そのまま書き込まれます。{VAR:キー名}のみ置換）"
 
 # 画像認識
 BUTTON_CAPTURE_IMAGE = "画像を取得"
@@ -214,6 +214,12 @@ LABEL_SPEED_PERCENT = "全体の速度率(%):"
 TRAY_MENU_ADD_CURRENT = "現在のファイルをランチャーに追加"
 MSG_TRAY_NO_FILE = "先にファイルを保存してください。"
 MSG_TRAY_ADDED = "トレイランチャーに追加しました: {name}"
+
+# クリップボード変数（Excelコピー取込）
+MSG_FIELDS_CONFIRM = (
+    "クリップボードから以下の値を取り込んで再生します。よろしいですか？\n\n{values}"
+)
+MSG_FIELDS_ERROR = "クリップボード変数を取り込めませんでした:\n{error}"
 
 # ワークフロー（共通）
 TOOLBAR_WORKFLOW = "ワークフロー"

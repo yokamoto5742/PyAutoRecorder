@@ -8,7 +8,7 @@ import pyautogui
 import pyperclip
 from PySide6.QtCore import QThread, Signal
 
-from service import ime_control, ui_selector
+from service import clipboard_fields, ime_control, ui_selector
 from service.conditions import ConditionContext, should_run
 from service.key_notation import WAIT_SECONDS, KeyToken, parse
 from service.models import ActionItem, ActionType, MacroFile
@@ -44,9 +44,11 @@ class MacroPlayer(QThread):
         parent=None,
         stop_event: threading.Event | None = None,
         pause_event: threading.Event | None = None,
+        fields: dict[str, str] | None = None,
     ) -> None:
         super().__init__(parent)
         self._macro = macro
+        self._fields = fields or {}  # クリップボード変数（{VAR:...}の解決に使う）
         # ワークフローから同期実行する際は停止・一時停止イベントを共有する
         self._stop_event = stop_event if stop_event is not None else threading.Event()
         self._pause_event = (
@@ -165,7 +167,8 @@ class MacroPlayer(QThread):
     def _execute_set_text(self, item: ActionItem) -> None:
         if item.selector is None:
             raise ValueError(MSG_SELECTOR_REQUIRED)
-        if not ui_selector.set_element_text(item.selector, item.keys):
+        text = clipboard_fields.substitute_raw(item.keys, self._fields)
+        if not ui_selector.set_element_text(item.selector, text):
             raise ValueError(self._element_not_found(item))
 
     def _execute_get_text(self, item: ActionItem) -> None:
@@ -214,6 +217,8 @@ class MacroPlayer(QThread):
                 pyautogui.hotkey(*token.modifiers, token.value)
             else:
                 pyautogui.press(token.value)
+        elif token.kind == "var":
+            self._type_text(clipboard_fields.resolve(token.value, self._fields))
         elif token.kind == "wait":
             self._sleep(WAIT_SECONDS)
         elif token.kind == "clip":

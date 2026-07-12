@@ -28,9 +28,15 @@ class WorkflowPlayer(QThread):
     error_occurred = Signal(str)
     workflow_finished = Signal(bool)  # Trueなら最後まで実行された
 
-    def __init__(self, bundle: WorkflowBundle, parent=None) -> None:
+    def __init__(
+        self,
+        bundle: WorkflowBundle,
+        parent=None,
+        fields: dict[str, str] | None = None,
+    ) -> None:
         super().__init__(parent)
         self._bundle = bundle
+        self._fields = fields  # クリップボード変数（各レコーディングへ引き渡す）
         self._stop_event = threading.Event()
         self._pause_event = threading.Event()
         self._resume_event = threading.Event()
@@ -80,7 +86,10 @@ class WorkflowPlayer(QThread):
     def _play_recording(self, step: WorkflowStep) -> bool:
         macro = MacroFile.load(self._bundle.recording_path(step.recording))
         player = MacroPlayer(
-            macro, stop_event=self._stop_event, pause_event=self._pause_event
+            macro,
+            stop_event=self._stop_event,
+            pause_event=self._pause_event,
+            fields=self._fields,
         )
         player.error_occurred.connect(self.error_occurred)
         return player.play_blocking()

@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
 )
 
 from app import constants
+from app.field_confirm import confirm_fields
 from app.item_editor_dialog import ItemEditorDialog
 from app.options_dialog import OptionsDialog
 from app.recorder_child_window import RecorderChildWindow
@@ -36,6 +37,7 @@ from service.hotkey_manager import (
     HotkeyManager,
     SingleHotkeyListener,
 )
+from service.clipboard_fields import collect_var_specs
 from service.models import ActionItem, ActionType, MacroFile
 from service.player import MacroPlayer
 from service.recorder import MacroRecorder
@@ -366,7 +368,13 @@ class MainWindow(QMainWindow):
     def _start_playback(self) -> None:
         if self._is_playing() or self._recorder is not None:
             return
-        self._player = MacroPlayer(self._macro)
+        fields = None
+        specs = collect_var_specs(self._macro)
+        if specs:
+            fields = confirm_fields(specs, self, constants.WINDOW_TITLE)
+            if fields is None:
+                return
+        self._player = MacroPlayer(self._macro, fields=fields)
         self._player.playback_finished.connect(self._on_playback_finished)
         self._player.error_occurred.connect(self._on_playback_error)
         self._start_pause_hotkey_listener()

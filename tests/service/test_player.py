@@ -11,6 +11,37 @@ def build_player(speed_percent: int = 100) -> MacroPlayer:
     return MacroPlayer(macro)
 
 
+class TestClipboardFields:
+    def test_set_text_substitutes_vars(self, monkeypatch: pytest.MonkeyPatch):
+        written: list[str] = []
+
+        def fake_set(selector: UiSelector, text: str) -> bool:
+            written.append(text)
+            return True
+
+        monkeypatch.setattr(ui_selector, "set_element_text", fake_set)
+        item = ActionItem(
+            action=ActionType.SET_TEXT,
+            keys="病室{VAR:病室}",
+            selector=UiSelector(automation_id="RoomBox"),
+        )
+        player = MacroPlayer(MacroFile(), fields={"病室": "342"})
+        player._execute_item(item, 0)
+        assert written == ["病室342"]
+
+    def test_var_token_types_resolved_value(self, monkeypatch: pytest.MonkeyPatch):
+        typed: list[str] = []
+        monkeypatch.setattr(MacroPlayer, "_type_text", staticmethod(typed.append))
+        player = MacroPlayer(MacroFile(), fields={"時刻": "930"})
+        player._execute_item(ActionItem(keys="{VAR:時刻:時刻}"), 0)
+        assert typed == ["09:30"]
+
+    def test_var_token_missing_key_raises(self):
+        player = MacroPlayer(MacroFile())  # fields未指定
+        with pytest.raises(ValueError, match="術者"):
+            player._execute_item(ActionItem(keys="{VAR:術者}"), 0)
+
+
 class TestScaledInterval:
     def test_100_percent_keeps_interval(self):
         assert build_player(100)._scaled_interval(2.0) == 2.0

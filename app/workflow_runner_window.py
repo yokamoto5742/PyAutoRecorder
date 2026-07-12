@@ -21,6 +21,8 @@ from PySide6.QtWidgets import (
 )
 
 from app import constants
+from app.field_confirm import confirm_fields
+from service.clipboard_fields import collect_bundle_var_specs
 from service.workflow import WorkflowBundle, list_bundles
 from service.workflow_player import CONFIRM_KIND_HUMAN, WorkflowPlayer
 from utils.config_manager import ConfigManager
@@ -159,7 +161,21 @@ class WorkflowRunnerWindow(QMainWindow):
     def _start_playback(self) -> None:
         if self._bundle is None or self._is_playing():
             return
-        self._player = WorkflowPlayer(self._bundle)
+        try:
+            specs = collect_bundle_var_specs(self._bundle)
+        except (OSError, ValueError, KeyError) as e:
+            QMessageBox.warning(
+                self,
+                constants.WORKFLOW_RUNNER_TITLE,
+                constants.MSG_BUNDLE_LOAD_ERROR.format(error=e),
+            )
+            return
+        fields = None
+        if specs:
+            fields = confirm_fields(specs, self, constants.WORKFLOW_RUNNER_TITLE)
+            if fields is None:
+                return
+        self._player = WorkflowPlayer(self._bundle, fields=fields)
         self._player.step_started.connect(self._on_step_started)
         self._player.confirmation_required.connect(self._on_confirmation_required)
         self._player.error_occurred.connect(self._on_error)

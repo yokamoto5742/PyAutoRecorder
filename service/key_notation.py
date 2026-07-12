@@ -7,6 +7,7 @@
 - ( ) { } , + ^ ~ % ` と半角スペースを文字として渡すには {(} {+} {SPACE} のように囲む
 - {WAIT}=0.5秒待ち {CLIP}=クリップボード貼り付け {CLEAR}=クリップボードを空にする
 - {IME}=IMEトグル {IMEON} {IMEOFF}
+- {VAR:キー名} {VAR:キー名:日付} {VAR:キー名:時刻} =クリップボード変数（Excelコピー取込）
 """
 
 from dataclasses import dataclass, field
@@ -62,6 +63,7 @@ class KeyToken:
     """パース結果の1トークン。
 
     kind: "key"=単一キー押下 / "text"=文字列入力 /
+          "var"=クリップボード変数（valueは"キー名"または"キー名:書式"） /
           "wait" "clip" "clear" "ime_toggle" "ime_on" "ime_off"=コマンド
     """
 
@@ -129,6 +131,13 @@ def _read_braced(notation: str, start: int) -> tuple[str, int]:
 
 def _braced_token(content: str, modifiers: tuple[str, ...]) -> KeyToken:
     upper = content.upper()
+    if upper.startswith("VAR:"):
+        spec = content[4:].strip()
+        if not spec:
+            raise ValueError(f"変数名がありません: {{{content}}}")
+        if modifiers:
+            raise ValueError(f"修飾キーは変数に使えません: {{{content}}}")
+        return KeyToken(kind="var", value=spec)
     if upper in SPECIAL_KEYS:
         return KeyToken(kind="key", value=SPECIAL_KEYS[upper], modifiers=modifiers)
     if upper in _COMMANDS:
