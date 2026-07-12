@@ -6,4 +6,5 @@ logs/
 .env
 .coverage
 *.spec
-*.iml
+*.iml__pycache__/ 
+*.pyc
