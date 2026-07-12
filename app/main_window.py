@@ -28,6 +28,7 @@ from app.recorder_child_window import RecorderChildWindow
 from app.recording_stop_button import RecordingStopButton
 from app.timer_dialog import TimerDialog
 from app.tray import AppTrayIcon
+from app.workflow_editor_window import WorkflowEditorWindow
 from service.hotkey_manager import (
     DEFAULT_PAUSE_KEY,
     DEFAULT_PLAY_STOP_KEY,
@@ -60,6 +61,7 @@ class MainWindow(QMainWindow):
         self._player: MacroPlayer | None = None
         self._pause_hotkey_listener: SingleHotkeyListener | None = None
         self._child_window: RecorderChildWindow | None = None
+        self._workflow_editor: WorkflowEditorWindow | None = None
         self._auto_quit_after_playback = launch_file_path is not None
 
         self._stop_button = RecordingStopButton()
@@ -118,6 +120,8 @@ class MainWindow(QMainWindow):
         toolbar.addSeparator()
         toolbar.addAction(constants.TOOLBAR_TIMER, self._edit_timers)
         toolbar.addAction(constants.TOOLBAR_OPTIONS, self._edit_options)
+        toolbar.addSeparator()
+        toolbar.addAction(constants.TOOLBAR_WORKFLOW, self._show_workflow_editor)
 
     def _build_record_button(self) -> QToolButton:
         button = QToolButton()
@@ -316,6 +320,12 @@ class MainWindow(QMainWindow):
                 on_item_added=self.add_item_to_current_page
             )
         self._child_window.show()
+
+    def _show_workflow_editor(self) -> None:
+        if self._workflow_editor is None:
+            self._workflow_editor = WorkflowEditorWindow(self._config)
+        self._workflow_editor.show()
+        self._workflow_editor.activateWindow()
 
     def _add_manual_key_item(self) -> None:
         item = ActionItem(interval=1.0, action=ActionType.KEY_ONLY)
@@ -543,4 +553,6 @@ class MainWindow(QMainWindow):
         self._stop_button.close()
         if self._child_window is not None:
             self._child_window.close()
+        if self._workflow_editor is not None:
+            self._workflow_editor.close()
         event.accept()

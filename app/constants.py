@@ -189,3 +189,71 @@ LABEL_SPEED_PERCENT = "全体の速度率(%):"
 TRAY_MENU_ADD_CURRENT = "現在のファイルをランチャーに追加"
 MSG_TRAY_NO_FILE = "先にファイルを保存してください。"
 MSG_TRAY_ADDED = "トレイランチャーに追加しました: {name}"
+
+# ワークフロー（共通）
+TOOLBAR_WORKFLOW = "ワークフロー"
+WORKFLOW_STEP_TYPE_LABELS = {
+    "play_recording": "操作再生",
+    "wait_image": "画面待ち",
+    "human_confirm": "人間確認",
+}
+WORKFLOW_STEP_ICONS = {
+    "play_recording": "■",
+    "wait_image": "⌛",
+    "human_confirm": "⚠️",
+}
+MSG_BUNDLE_LOAD_ERROR = "ワークフローを読み込めませんでした: {error}"
+
+# ワークフロー実行画面
+WORKFLOW_RUNNER_TITLE = "ワークフロー実行"
+LABEL_WORKFLOW_LIST = "ワークフロー一覧"
+BUTTON_WORKFLOW_REFRESH = "一覧を更新"
+LABEL_CURRENT_FLOW = "現在の実行フロー：{name}"
+BUTTON_WORKFLOW_PLAY = "◯ 再生"
+BUTTON_WORKFLOW_PAUSE = "‖ 一時停止"
+BUTTON_WORKFLOW_STOP = "■ 停止"
+BUTTON_WORKFLOW_RESUME = "再開"
+WORKFLOW_STATUS_DONE = "[完了]"
+WORKFLOW_STATUS_RUNNING = "[実行]"
+WORKFLOW_STATUS_WAITING = "[待機]"
+MSG_WORKFLOW_FINISHED = "ワークフローが完了しました。"
+MSG_WORKFLOW_STOPPED = "ワークフローを停止しました。"
+MSG_WORKFLOW_PAUSED = "一時停止中"
+MSG_CONFIRM_DEFAULT = "内容を目視確認し、「再開」を押してください。"
+MSG_WAIT_TIMEOUT_CONFIRM = (
+    "画面を確認できませんでした。目視確認して「再開」を押してください。"
+)
+MSG_BUNDLE_DIR_NOT_SET = (
+    "共有フォルダが設定されていません。"
+    "config.iniの[Workflow] bundle_dirを設定してください。"
+)
+
+# ワークフロー編集画面
+WORKFLOW_EDITOR_TITLE = "ワークフロー編集"
+LABEL_WORKFLOW_NAME = "ワークフロー名:"
+COLUMN_STEP_TYPE = "種類"
+COLUMN_STEP_LABEL = "ラベル"
+COLUMN_STEP_DETAIL = "内容"
+BUTTON_ADD_STEP = "ステップ追加"
+MENU_ADD_STEP_PLAY = "操作再生（レコーディング呼び出し）"
+MENU_ADD_STEP_WAIT_IMAGE = "画面待ち（画像認識）"
+MENU_ADD_STEP_CONFIRM = "人間確認（一時停止）"
+DIALOG_NEW_BUNDLE_TITLE = "新規ワークフロー"
+LABEL_NEW_BUNDLE_NAME = "ワークフロー名を入力してください:"
+DIALOG_BUNDLE_DIR_TITLE = "保存先フォルダの選択"
+DIALOG_OPEN_BUNDLE_TITLE = "ワークフロー（.bundle）フォルダの選択"
+MSG_INVALID_BUNDLE = "選択したフォルダはワークフローではありません。"
+MSG_BUNDLE_EXISTS = "同名のワークフローが既に存在します: {name}"
+MSG_BUNDLE_SAVE_ERROR = "ワークフローを保存できませんでした: {error}"
+
+# ステップ編集ダイアログ
+DIALOG_STEP_TITLE = "ステップの編集"
+LABEL_STEP_LABEL = "ラベル:"
+LABEL_STEP_RECORDING = "レコーディング:"
+BUTTON_BROWSE_RECORDING = "参照..."
+DIALOG_RECORDING_TITLE = "レコーディングファイルの選択"
+LABEL_STEP_IMAGE = "認識する画像:"
+LABEL_STEP_MAX_WAIT = "最大待機(秒、0は無限):"
+LABEL_STEP_MESSAGE = "確認メッセージ:"
+MSG_RECORDING_REQUIRED = "レコーディングファイルを選択してください。"
+MSG_STEP_IMAGE_REQUIRED = "認識する画像を設定してください。"

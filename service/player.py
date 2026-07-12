@@ -35,11 +35,20 @@ class MacroPlayer(QThread):
     error_occurred = Signal(str)
     playback_finished = Signal(bool)  # Trueなら最後まで実行された
 
-    def __init__(self, macro: MacroFile, parent=None) -> None:
+    def __init__(
+        self,
+        macro: MacroFile,
+        parent=None,
+        stop_event: threading.Event | None = None,
+        pause_event: threading.Event | None = None,
+    ) -> None:
         super().__init__(parent)
         self._macro = macro
-        self._stop_event = threading.Event()
-        self._pause_event = threading.Event()
+        # ワークフローから同期実行する際は停止・一時停止イベントを共有する
+        self._stop_event = stop_event if stop_event is not None else threading.Event()
+        self._pause_event = (
+            pause_event if pause_event is not None else threading.Event()
+        )
         self._final_event = threading.Event()
 
     def stop(self) -> None:
@@ -61,14 +70,17 @@ class MacroPlayer(QThread):
         return self._pause_event.is_set()
 
     def run(self) -> None:
+        self.playback_finished.emit(self.play_blocking())
+
+    def play_blocking(self) -> bool:
+        """呼び出し元スレッドで同期実行する（ワークフロー用）。Trueなら完走。"""
         try:
-            completed = self._run_all()
+            return self._run_all()
         except pyautogui.FailSafeException:
-            completed = False
+            return False
         except (ValueError, OSError) as e:  # OSErrorはアプリ起動失敗時
             self.error_occurred.emit(str(e))
-            completed = False
-        self.playback_finished.emit(completed)
+            return False
 
     def _run_all(self) -> bool:
         if not self._play_page("initial", self._macro.initial, 0):
