@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
 )
 
 from app import constants
+from app.element_highlight import ElementHighlighter
 from app.image_capture_dialog import capture_screen_region, load_image_file
 from service.key_notation import SPECIAL_KEYS, parse
 from service.models import ActionItem, ActionType, Condition, ConditionType
@@ -186,6 +187,7 @@ class ItemEditorDialog(QDialog):
         self._pick_timer.setInterval(1000)
         self._pick_timer.timeout.connect(self._on_pick_tick)
         self._pick_remaining = 0
+        self._highlighter = ElementHighlighter(self)
 
         form.addRow("", self._pick_button)
         form.addRow(constants.LABEL_SELECTOR_AUTOMATION_ID, self._sel_automation_id)
@@ -204,6 +206,7 @@ class ItemEditorDialog(QDialog):
         self._pick_button.setText(
             constants.BUTTON_PICK_COUNTDOWN.format(sec=self._pick_remaining)
         )
+        self._highlighter.start()
         self._pick_timer.start()
 
     def _on_pick_tick(self) -> None:
@@ -214,9 +217,16 @@ class ItemEditorDialog(QDialog):
             )
             return
         self._pick_timer.stop()
+        self._highlighter.stop()
         self._pick_button.setText(constants.BUTTON_PICK_ELEMENT)
         self._pick_button.setEnabled(True)
         self._apply_picked_selector()
+
+    def done(self, result: int) -> None:
+        # カウントダウン中にダイアログを閉じてもハイライトを残さない
+        self._highlighter.stop()
+        self._pick_timer.stop()
+        super().done(result)
 
     def _apply_picked_selector(self) -> None:
         # COMのアパートメント競合を避けるため専用スレッドで取得する
@@ -323,9 +333,8 @@ class ItemEditorDialog(QDialog):
         self._drag_x.setEnabled(is_drag)
         self._drag_y.setEnabled(is_drag)
         self._app_path.setEnabled(action == ActionType.LAUNCH_APP)
-        self._selector_group.setEnabled(
-            action not in (ActionType.KEY_ONLY, ActionType.LAUNCH_APP)
-        )
+        # KEY_ONLYも記録時に取得したフォーカス要素を保持・編集できるようにする
+        self._selector_group.setEnabled(action != ActionType.LAUNCH_APP)
         self._keys.setEnabled(action != ActionType.GET_TEXT)
         self._keys.setPlaceholderText(
             constants.HINT_SET_TEXT_KEYS if action == ActionType.SET_TEXT else ""
@@ -386,7 +395,7 @@ class ItemEditorDialog(QDialog):
             ActionType.SET_TEXT,
             ActionType.GET_TEXT,
         )
-        uses_selector = action not in (ActionType.KEY_ONLY, ActionType.LAUNCH_APP)
+        uses_selector = action != ActionType.LAUNCH_APP
         return ActionItem(
             interval=self._interval.value(),
             x=self._x.value() if has_coords else None,

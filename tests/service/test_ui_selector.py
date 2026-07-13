@@ -1,6 +1,20 @@
+import sys
 from types import SimpleNamespace
 
+from pytest import MonkeyPatch
+
+from service import ui_selector
 from service.ui_selector import UiSelector, build_selector, window_matches
+
+
+class _NullInitializer:
+    """UIAutomationInitializerInThreadの代替（COM初期化を行わない）。"""
+
+    def __enter__(self) -> "_NullInitializer":
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        return None
 
 
 class TestSerialization:
@@ -103,3 +117,42 @@ class TestWindowMatches:
 
     def test_no_window_criteria_matches_all(self):
         assert window_matches(self._window(name="任意"), UiSelector())
+
+
+class TestSelectorFromFocus:
+    def test_uses_focused_control(self, monkeypatch: MonkeyPatch) -> None:
+        focused = object()
+        expected = UiSelector(automation_id="PatIdBox1")
+        fake_uia = SimpleNamespace(
+            UIAutomationInitializerInThread=_NullInitializer,
+            GetFocusedControl=lambda: focused,
+        )
+        monkeypatch.setitem(sys.modules, "uiautomation", fake_uia)
+        received: list[object] = []
+        monkeypatch.setattr(
+            ui_selector,
+            "_selector_from_control",
+            lambda control: received.append(control) or expected,
+        )
+        assert ui_selector.selector_from_focus() == expected
+        assert received == [focused]
+
+
+class TestRectFromCursor:
+    def test_returns_bounding_rectangle(self, monkeypatch: MonkeyPatch) -> None:
+        rect = SimpleNamespace(left=10, top=20, right=110, bottom=220)
+        control = SimpleNamespace(BoundingRectangle=rect)
+        fake_uia = SimpleNamespace(
+            UIAutomationInitializerInThread=_NullInitializer,
+            ControlFromCursor=lambda: control,
+        )
+        monkeypatch.setitem(sys.modules, "uiautomation", fake_uia)
+        assert ui_selector.rect_from_cursor() == (10, 20, 110, 220)
+
+    def test_returns_none_without_control(self, monkeypatch: MonkeyPatch) -> None:
+        fake_uia = SimpleNamespace(
+            UIAutomationInitializerInThread=_NullInitializer,
+            ControlFromCursor=lambda: None,
+        )
+        monkeypatch.setitem(sys.modules, "uiautomation", fake_uia)
+        assert ui_selector.rect_from_cursor() is None

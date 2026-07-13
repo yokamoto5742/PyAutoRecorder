@@ -4,8 +4,8 @@
 - press→release間の移動が閾値を超えたらドラッグとして記録する
 - 短時間・近接の左クリック2回はダブルクリック1項目にまとめる
 - 連続するキー入力は1項目のトークン文字列にまとめ、クリックで区切る
-- クリック時は座標のUIA要素情報（セレクタ）もワーカースレッドで取得し、
-  停止時にクリック項目へ付与する（ハイブリッド記録）
+- クリック時は座標の、キー入力開始時はフォーカス中のUIA要素情報（セレクタ）を
+  ワーカースレッドで取得し、停止時に各項目へ付与する（ハイブリッド記録）
 """
 
 import threading
@@ -17,7 +17,7 @@ from pynput import keyboard, mouse
 
 from service.key_notation import escape_char
 from service.models import ActionItem, ActionType
-from service.ui_selector import selector_from_point
+from service.ui_selector import selector_from_focus, selector_from_point
 
 DRAG_THRESHOLD_PX = 10
 DOUBLE_CLICK_SEC = 0.4
@@ -90,11 +90,13 @@ class MacroRecorder:
         self._keyboard_listener: keyboard.Listener | None = None
         self._selector_executor: ThreadPoolExecutor | None = None
         self._press_selector: Future | None = None
+        self._key_selector: Future | None = None
         self._pending_selectors: list[tuple[ActionItem, Future]] = []
 
     def start(self) -> None:
         self._items.clear()
         self._pending_selectors.clear()
+        self._key_selector = None
         self._last_event_time = time.monotonic()
         self._selector_executor = ThreadPoolExecutor(max_workers=1)
         self._mouse_listener = mouse.Listener(on_click=self._on_click)
@@ -241,6 +243,9 @@ class MacroRecorder:
         now = time.monotonic()
         if not self._key_buffer:
             self._key_interval = round(now - self._last_event_time)
+            # 入力先を特定するため、入力開始時点のフォーカス要素を取得する
+            if self._selector_executor is not None:
+                self._key_selector = self._selector_executor.submit(selector_from_focus)
         self._last_event_time = now
         self._key_buffer += tokens
         if len(self._key_buffer) >= MAX_KEYS_PER_ITEM:
@@ -249,11 +254,13 @@ class MacroRecorder:
     def _flush_key_buffer(self) -> None:
         if not self._key_buffer:
             return
-        self._items.append(
-            ActionItem(
-                interval=self._key_interval,
-                action=ActionType.KEY_ONLY,
-                keys=self._key_buffer,
-            )
+        item = ActionItem(
+            interval=self._key_interval,
+            action=ActionType.KEY_ONLY,
+            keys=self._key_buffer,
         )
+        self._items.append(item)
+        if self._key_selector is not None:
+            self._pending_selectors.append((item, self._key_selector))
+            self._key_selector = None
         self._key_buffer = ""

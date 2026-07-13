@@ -176,6 +176,26 @@ def selector_from_cursor() -> UiSelector | None:
         return _selector_from_control(uiautomation.ControlFromCursor())
 
 
+def selector_from_focus() -> UiSelector | None:
+    """フォーカス中のコントロールからセレクタを組み立てる（キー入力の記録用）。"""
+    import uiautomation
+
+    with uiautomation.UIAutomationInitializerInThread():
+        return _selector_from_control(uiautomation.GetFocusedControl())
+
+
+def rect_from_cursor() -> tuple[int, int, int, int] | None:
+    """カーソル位置のコントロールの矩形(left, top, right, bottom)を返す（ハイライト用）。"""
+    import uiautomation
+
+    with uiautomation.UIAutomationInitializerInThread():
+        control = uiautomation.ControlFromCursor()
+        if control is None:
+            return None
+        rect = control.BoundingRectangle
+        return rect.left, rect.top, rect.right, rect.bottom
+
+
 def _selector_from_control(control: Any) -> UiSelector | None:
     window = _top_level_ancestor(control)
     if control is None or window is None:
