@@ -69,6 +69,7 @@ MSG_PLAYBACK_ERROR = "再生中にエラーが発生しました: {error}"
 MSG_RECORDING = "記録中... 画面右下のボタンで終了します。"
 MSG_FILE_LOAD_ERROR = "ファイルを読み込めませんでした: {error}"
 MSG_FILE_SAVE_ERROR = "ファイルを保存できませんでした: {error}"
+MSG_OPEN_FOLDER_CONFIRM = "保存先フォルダを開きますか？"
 
 # 記録停止ボタン
 STOP_BUTTON_TOOLTIP = "記録を終了"

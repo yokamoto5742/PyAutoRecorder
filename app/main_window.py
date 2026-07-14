@@ -1,5 +1,6 @@
 """メインウィンドウ: ツールバー＋3ページのリスト表示・編集・記録・再生を統括する。"""
 
+import os
 from pathlib import Path
 
 from PySide6.QtCore import Qt, Signal
@@ -494,10 +495,14 @@ class MainWindow(QMainWindow):
             )
             return
         self._set_dirty(False)
+        self._confirm_open_folder(self._file_path.parent)
 
     def _save_file_as(self) -> None:
         path_str, _filter = QFileDialog.getSaveFileName(
-            self, constants.FILE_DIALOG_SAVE_TITLE, "", constants.FILE_DIALOG_FILTER
+            self,
+            constants.FILE_DIALOG_SAVE_TITLE,
+            str(self._config.get_par_dir()),
+            constants.FILE_DIALOG_FILTER,
         )
         if not path_str:
             return
@@ -505,14 +510,16 @@ class MainWindow(QMainWindow):
         self._save_file()
 
     def _generate_manual(self) -> None:
-        """保存済みの.parから操作手順書(.md)を同じフォルダへ出力する。"""
+        """保存済みの.parから操作手順書(.md)を手順書フォルダへ出力する。"""
         if self._file_path is None or self._dirty:
             QMessageBox.information(
                 self, constants.WINDOW_TITLE, constants.MSG_MANUAL_NO_FILE
             )
             return
         try:
-            output_path = write_macro_manual(self._file_path)
+            output_path = write_macro_manual(
+                self._file_path, self._config.get_manual_dir()
+            )
         except (OSError, ValueError, KeyError) as e:
             QMessageBox.warning(
                 self,
@@ -523,6 +530,14 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(
             constants.MSG_MANUAL_SAVED.format(path=output_path), 5000
         )
+        self._confirm_open_folder(output_path.parent)
+
+    def _confirm_open_folder(self, folder: Path) -> None:
+        answer = QMessageBox.question(
+            self, constants.WINDOW_TITLE, constants.MSG_OPEN_FOLDER_CONFIRM
+        )
+        if answer == QMessageBox.StandardButton.Yes:
+            os.startfile(folder)
 
     # --- タイマー・トレイ ---
 

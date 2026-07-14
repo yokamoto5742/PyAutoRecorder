@@ -180,6 +180,15 @@ class TestWriteMacroManual:
         assert "sample.par" in text
         assert "左クリック" in text
 
+    def test_writes_md_to_output_dir(self, tmp_path: Path):
+        par_path = tmp_path / "par" / "sample.par"
+        par_path.parent.mkdir()
+        build_sample_macro().save(par_path)
+        manual_dir = tmp_path / "manual"
+        manual_dir.mkdir()
+        output_path = write_macro_manual(par_path, manual_dir)
+        assert output_path == manual_dir / "sample.md"
+
 
 class TestBundleManual:
     @staticmethod

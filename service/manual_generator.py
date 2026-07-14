@@ -274,14 +274,18 @@ def _recording_section(step: WorkflowStep, bundle: WorkflowBundle) -> list[str]:
 # --- ファイル出力 ---
 
 
-def write_macro_manual(par_path: Path) -> Path:
-    """`foo.par`を読み、同じフォルダへ`foo.md`を書き出してそのパスを返す。"""
+def write_macro_manual(par_path: Path, output_dir: Path | None = None) -> Path:
+    """`foo.par`を読み、`foo.md`を書き出してそのパスを返す。
+
+    output_dir省略時は.parと同じフォルダに書き出す。
+    """
     par_path = Path(par_path)
     macro = MacroFile.load(par_path)
     text = generate_macro_manual(
         macro, title=f"操作手順書: {par_path.stem}", source_name=par_path.name
     )
-    output_path = par_path.with_suffix(".md")
+    output_dir = Path(output_dir) if output_dir is not None else par_path.parent
+    output_path = output_dir / f"{par_path.stem}.md"
     output_path.write_text(text, encoding="utf-8")
     return output_path
 

@@ -46,6 +46,26 @@ class ConfigManager:
     def get_path(self, key: str) -> Path:
         return Path(self.config.get("Paths", key))
 
+    def get_par_dir(self) -> Path:
+        """マクロファイル(.par)の保存先フォルダを取得し、存在しなければ作成する。"""
+        path = Path(
+            self.config.get(
+                "Paths", "par_dir", fallback=r"C:\Shinseikai\PyAutoRecorder\par"
+            )
+        )
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
+    def get_manual_dir(self) -> Path:
+        """操作手順書(.md)の保存先フォルダを取得し、存在しなければ作成する。"""
+        path = Path(
+            self.config.get(
+                "Paths", "manual_dir", fallback=r"C:\Shinseikai\PyAutoRecorder\manual"
+            )
+        )
+        path.mkdir(parents=True, exist_ok=True)
+        return path
+
     def get_tesseract_path(self) -> str:
         return self.config.get(
             "Paths",
