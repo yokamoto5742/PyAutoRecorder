@@ -1,10 +1,15 @@
 import sys
+from _ctypes import COMError
 from types import SimpleNamespace
 
 from pytest import MonkeyPatch
 
 from service import ui_selector
 from service.ui_selector import UiSelector, build_selector, window_matches
+
+
+def _com_error() -> COMError:
+    return COMError(-2147220991, "要素が消滅した", (None, None, None, 0, None))
 
 
 class _NullInitializer:
@@ -117,6 +122,62 @@ class TestWindowMatches:
 
     def test_no_window_criteria_matches_all(self):
         assert window_matches(self._window(name="任意"), UiSelector())
+
+
+class _VanishingWindow:
+    """属性アクセス時にCOMErrorを送出するウィンドウ（探索中の消滅を再現）。"""
+
+    @property
+    def Name(self) -> str:
+        raise _com_error()
+
+
+class TestFindControlComError:
+    def test_skips_vanished_window_and_continues(
+        self, monkeypatch: MonkeyPatch
+    ) -> None:
+        found = SimpleNamespace(Exists=lambda **kwargs: True)
+        stable_window = SimpleNamespace(Name="無題 - メモ帳")
+        fake_uia = SimpleNamespace(
+            ControlType=SimpleNamespace(),
+            GetRootControl=lambda: SimpleNamespace(
+                GetChildren=lambda: [_VanishingWindow(), stable_window]
+            ),
+            Control=lambda **kwargs: found,
+        )
+        monkeypatch.setitem(sys.modules, "uiautomation", fake_uia)
+        selector = UiSelector(window_name="メモ帳", name="新規作成")
+        assert ui_selector._find_control(selector) is found
+
+    def test_returns_none_when_all_windows_vanish(
+        self, monkeypatch: MonkeyPatch
+    ) -> None:
+        fake_uia = SimpleNamespace(
+            ControlType=SimpleNamespace(),
+            GetRootControl=lambda: SimpleNamespace(
+                GetChildren=lambda: [_VanishingWindow()]
+            ),
+        )
+        monkeypatch.setitem(sys.modules, "uiautomation", fake_uia)
+        selector = UiSelector(window_name="メモ帳", name="新規作成")
+        assert ui_selector._find_control(selector) is None
+
+
+class TestFindClickablePointComError:
+    def test_returns_none_when_control_vanishes_after_found(
+        self, monkeypatch: MonkeyPatch
+    ) -> None:
+        class _VanishingControl:
+            @property
+            def IsOffscreen(self) -> bool:
+                raise _com_error()
+
+        fake_uia = SimpleNamespace(UIAutomationInitializerInThread=_NullInitializer)
+        monkeypatch.setitem(sys.modules, "uiautomation", fake_uia)
+        monkeypatch.setattr(
+            ui_selector, "_find_control", lambda selector: _VanishingControl()
+        )
+        assert ui_selector.find_clickable_point(UiSelector(name="新規作成")) is None
 
 
 class TestSelectorFromFocus:

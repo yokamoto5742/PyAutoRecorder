@@ -7,6 +7,7 @@
 - 親ウィンドウはAutomationIdがあればそれで特定し、なければウィンドウ名の部分一致
 """
 
+from _ctypes import COMError
 from dataclasses import dataclass
 from typing import Any
 
@@ -103,16 +104,19 @@ def _find_control(selector: UiSelector) -> Any:
     if control_type is not None:
         props["ControlType"] = control_type
     for window in uiautomation.GetRootControl().GetChildren():
-        if not window_matches(window, selector):
-            continue
-        control = uiautomation.Control(
-            searchFromControl=window,
-            searchDepth=_SEARCH_DEPTH_ALL,
-            foundIndex=selector.found_index,
-            **props,
-        )
-        if control.Exists(maxSearchSeconds=0, searchIntervalSeconds=0):
-            return control
+        try:
+            if not window_matches(window, selector):
+                continue
+            control = uiautomation.Control(
+                searchFromControl=window,
+                searchDepth=_SEARCH_DEPTH_ALL,
+                foundIndex=selector.found_index,
+                **props,
+            )
+            if control.Exists(maxSearchSeconds=0, searchIntervalSeconds=0):
+                return control
+        except COMError:
+            continue  # 探索中にウィンドウ・要素が消滅した場合は次のウィンドウへ
     return None
 
 
@@ -121,11 +125,14 @@ def find_clickable_point(selector: UiSelector) -> tuple[int, int] | None:
     import uiautomation
 
     with uiautomation.UIAutomationInitializerInThread():
-        control = _find_control(selector)
-        if control is None or control.IsOffscreen:
-            return None
-        rect = control.BoundingRectangle
-        return (rect.left + rect.right) // 2, (rect.top + rect.bottom) // 2
+        try:
+            control = _find_control(selector)
+            if control is None or control.IsOffscreen:
+                return None
+            rect = control.BoundingRectangle
+            return (rect.left + rect.right) // 2, (rect.top + rect.bottom) // 2
+        except COMError:
+            return None  # 発見直後に要素が消滅した場合は座標フォールバックに委ねる
 
 
 def set_element_text(selector: UiSelector, text: str) -> bool:
@@ -133,14 +140,17 @@ def set_element_text(selector: UiSelector, text: str) -> bool:
     import uiautomation
 
     with uiautomation.UIAutomationInitializerInThread():
-        control = _find_control(selector)
-        if control is None:
+        try:
+            control = _find_control(selector)
+            if control is None:
+                return False
+            pattern = control.GetPattern(uiautomation.PatternId.ValuePattern)
+            if pattern is None:
+                return False
+            pattern.SetValue(text)
+            return True
+        except COMError:
             return False
-        pattern = control.GetPattern(uiautomation.PatternId.ValuePattern)
-        if pattern is None:
-            return False
-        pattern.SetValue(text)
-        return True
 
 
 def get_element_text(selector: UiSelector) -> str | None:
@@ -148,13 +158,16 @@ def get_element_text(selector: UiSelector) -> str | None:
     import uiautomation
 
     with uiautomation.UIAutomationInitializerInThread():
-        control = _find_control(selector)
-        if control is None:
+        try:
+            control = _find_control(selector)
+            if control is None:
+                return None
+            pattern = control.GetPattern(uiautomation.PatternId.ValuePattern)
+            if pattern is not None:
+                return pattern.Value
+            return control.Name  # ラベル等はNameにテキストが入る
+        except COMError:
             return None
-        pattern = control.GetPattern(uiautomation.PatternId.ValuePattern)
-        if pattern is not None:
-            return pattern.Value
-        return control.Name  # ラベル等はNameにテキストが入る
 
 
 # --- 記録用（座標・カーソルからのセレクタ組み立て） ---

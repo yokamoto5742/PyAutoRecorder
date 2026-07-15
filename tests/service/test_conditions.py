@@ -1,5 +1,8 @@
+import sys
+from _ctypes import COMError
 from datetime import datetime
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -184,3 +187,30 @@ class TestShouldRun:
         monkeypatch.setattr(conditions, "image_shown", lambda image: image == "abc")
         wait = Condition(ConditionType.IMAGE_SHOWN_WAIT, image="abc")
         assert should_run(wait, ConditionContext())
+
+
+class TestQueryButtonComError:
+    class _NullInitializer:
+        def __enter__(self) -> "TestQueryButtonComError._NullInitializer":
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            return None
+
+    class _VanishingWindow:
+        """探索中に消滅したウィンドウ（属性アクセスでCOMErrorを送出）。"""
+
+        def ButtonControl(self, **kwargs: object) -> object:
+            raise COMError(-2147220991, "要素が消滅した", (None, None, None, 0, None))
+
+    def test_returns_false_when_window_vanishes(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        fake_uia = SimpleNamespace(
+            UIAutomationInitializerInThread=self._NullInitializer,
+            GetRootControl=lambda: SimpleNamespace(
+                GetChildren=lambda: [self._VanishingWindow()]
+            ),
+        )
+        monkeypatch.setitem(sys.modules, "uiautomation", fake_uia)
+        assert not conditions.button_shown("OK", "", "")

@@ -3,6 +3,7 @@
 import subprocess
 import threading
 import time
+from _ctypes import COMError
 
 import pyautogui
 import pyperclip
@@ -84,6 +85,11 @@ class MacroPlayer(QThread):
         except pyautogui.FailSafeException:
             return False
         except (ValueError, OSError) as e:  # OSErrorはアプリ起動失敗時
+            self.error_occurred.emit(str(e))
+            return False
+        except (
+            COMError
+        ) as e:  # UIA呼び出しから漏れた場合の安全網（スレッドを落とさない）
             self.error_occurred.emit(str(e))
             return False
 

@@ -7,6 +7,7 @@
 import re
 import threading
 import time
+from _ctypes import COMError
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -76,22 +77,27 @@ def _query_button(
     # 再生スレッドから呼ばれるためスレッドごとにCOMを初期化する
     with uiautomation.UIAutomationInitializerInThread():
         for window in uiautomation.GetRootControl().GetChildren():
-            if parent_title:
-                if parent_title.startswith("id:"):
-                    if window.AutomationId != parent_title[len("id:") :]:
+            try:
+                if parent_title:
+                    if parent_title.startswith("id:"):
+                        if window.AutomationId != parent_title[len("id:") :]:
+                            continue
+                    elif not title_matches([window.Name], parent_title):
                         continue
-                elif not title_matches([window.Name], parent_title):
+                if parent_class and window.ClassName != parent_class:
                     continue
-            if parent_class and window.ClassName != parent_class:
-                continue
-            if button_name.startswith("id:"):
-                button = window.ButtonControl(
-                    searchDepth=0xFFFFFFFF, AutomationId=button_name[len("id:") :]
-                )
-            else:
-                button = window.ButtonControl(searchDepth=0xFFFFFFFF, Name=button_name)
-            if button.Exists(maxSearchSeconds=0, searchIntervalSeconds=0):
-                return check(button)
+                if button_name.startswith("id:"):
+                    button = window.ButtonControl(
+                        searchDepth=0xFFFFFFFF, AutomationId=button_name[len("id:") :]
+                    )
+                else:
+                    button = window.ButtonControl(
+                        searchDepth=0xFFFFFFFF, Name=button_name
+                    )
+                if button.Exists(maxSearchSeconds=0, searchIntervalSeconds=0):
+                    return check(button)
+            except COMError:
+                continue  # 探索中にウィンドウ・要素が消滅した場合は次のウィンドウへ
     return False
 
 
