@@ -41,6 +41,8 @@ MENU_EDIT_ITEM = "編集"
 MENU_DELETE_ITEM = "削除"
 MENU_MOVE_UP = "上へ移動"
 MENU_MOVE_DOWN = "下へ移動"
+BUTTON_MOVE_UP = "▲"
+BUTTON_MOVE_DOWN = "▼"
 
 # アクション種別の表示名
 ACTION_LABELS = {

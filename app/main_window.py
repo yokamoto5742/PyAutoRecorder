@@ -169,7 +169,7 @@ class MainWindow(QMainWindow):
         ):
             tree = self._build_tree()
             self._trees[page] = tree
-            self._tabs.addTab(tree, title)
+            self._tabs.addTab(self._build_tree_page(tree, page), title)
         layout.addWidget(self._tabs)
         self.setCentralWidget(central)
         self.resize(*self._config.get_window_size("main", (800, 500)))
@@ -193,6 +193,30 @@ class MainWindow(QMainWindow):
             lambda pos, t=tree: self._show_context_menu(t, pos)
         )
         return tree
+
+    def _build_tree_page(self, tree: QTreeWidget, page: str) -> QWidget:
+        container = QWidget()
+        row = QHBoxLayout(container)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.addWidget(tree)
+
+        move_buttons = QVBoxLayout()
+        move_buttons.setContentsMargins(0, 0, 0, 0)
+        up_button = QPushButton(constants.BUTTON_MOVE_UP)
+        up_button.setToolTip(constants.MENU_MOVE_UP)
+        up_button.clicked.connect(
+            lambda: self._move_item(self._selected_index(tree), -1)
+        )
+        down_button = QPushButton(constants.BUTTON_MOVE_DOWN)
+        down_button.setToolTip(constants.MENU_MOVE_DOWN)
+        down_button.clicked.connect(
+            lambda: self._move_item(self._selected_index(tree), 1)
+        )
+        move_buttons.addWidget(up_button)
+        move_buttons.addWidget(down_button)
+        move_buttons.addStretch()
+        row.addLayout(move_buttons)
+        return container
 
     # --- モデルとビューの同期 ---
 
@@ -273,8 +297,6 @@ class MainWindow(QMainWindow):
         menu = QMenu(tree)
         menu.addAction(constants.MENU_EDIT_ITEM, self._edit_item)
         menu.addAction(constants.MENU_DELETE_ITEM, lambda: self._delete_item(index))
-        menu.addAction(constants.MENU_MOVE_UP, lambda: self._move_item(index, -1))
-        menu.addAction(constants.MENU_MOVE_DOWN, lambda: self._move_item(index, 1))
         menu.exec(tree.viewport().mapToGlobal(pos))
 
     def _delete_item(self, index: int) -> None:
@@ -284,6 +306,8 @@ class MainWindow(QMainWindow):
         self._set_dirty()
 
     def _move_item(self, index: int, delta: int) -> None:
+        if index < 0:
+            return
         page = self._current_page()
         items = getattr(self._macro, page)
         new_index = index + delta

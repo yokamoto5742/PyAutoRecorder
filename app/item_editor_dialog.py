@@ -30,6 +30,7 @@ from app.image_capture_dialog import capture_screen_region, load_image_file
 from service.key_notation import SPECIAL_KEYS, parse
 from service.models import ActionItem, ActionType, Condition, ConditionType
 from service.ui_selector import UiSelector, selector_from_cursor
+from utils.config_manager import ConfigManager
 
 _COORD_MIN = -10000
 _COORD_MAX = 20000
@@ -74,6 +75,7 @@ class ItemEditorDialog(QDialog):
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
         self._on_action_changed()
+        self.resize(*ConfigManager().get_window_size("item_editor", (650, 750)))
 
     def _build_form(self, item: ActionItem) -> QFormLayout:
         form = QFormLayout()
@@ -147,8 +149,11 @@ class ItemEditorDialog(QDialog):
 
     def _build_key_buttons(self) -> QWidget:
         container = QWidget()
-        row = QHBoxLayout(container)
-        row.setContentsMargins(0, 0, 0, 0)
+        layout = QVBoxLayout(container)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        top_row = QHBoxLayout()
+        top_row.setContentsMargins(0, 0, 0, 0)
         special_combo = QComboBox()
         for name in SPECIAL_KEYS:
             special_combo.addItem("{" + name + "}")
@@ -156,12 +161,17 @@ class ItemEditorDialog(QDialog):
         insert_button.clicked.connect(
             lambda: self._keys.insert(special_combo.currentText())
         )
-        row.addWidget(special_combo)
-        row.addWidget(insert_button)
+        top_row.addWidget(special_combo)
+        top_row.addWidget(insert_button)
+        layout.addLayout(top_row)
+
+        bottom_row = QHBoxLayout()
+        bottom_row.setContentsMargins(0, 0, 0, 0)
         for label, text in _INSERT_BUTTONS:
             button = QPushButton(label)
             button.clicked.connect(lambda _checked=False, t=text: self._keys.insert(t))
-            row.addWidget(button)
+            bottom_row.addWidget(button)
+        layout.addLayout(bottom_row)
         return container
 
     def _build_selector_group(self, selector: UiSelector | None) -> QGroupBox:
