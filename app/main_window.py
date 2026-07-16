@@ -235,9 +235,6 @@ class MainWindow(QMainWindow):
     def _current_page(self) -> str:
         return _PAGES[self._tabs.currentIndex()]
 
-    def _current_items(self) -> list[ActionItem]:
-        return getattr(self._macro, self._current_page())
-
     def _refresh_tree(self, page: str) -> None:
         tree = self._trees[page]
         # 再構築中のitemChanged誤発火を防ぐ
@@ -312,8 +309,23 @@ class MainWindow(QMainWindow):
 
     def add_item_to_current_page(self, item: ActionItem) -> None:
         """現在表示中のページへ項目を追加する（子機・手動記録からも使う）。"""
-        self._current_items().append(item)
-        self._refresh_tree(self._current_page())
+        self._insert_items_after_selection([item])
+
+    def _insert_items_after_selection(self, items: list[ActionItem]) -> None:
+        """選択行の直下に項目を挿入する。未選択時は末尾に追加。"""
+        if not items:
+            return
+        page = self._current_page()
+        tree = self._trees[page]
+        index = self._selected_index(tree)
+        targets = getattr(self._macro, page)
+        pos = index + 1 if index >= 0 else len(targets)
+        targets[pos:pos] = items
+        self._refresh_tree(page)
+        # 再構築で選択が消えるため、挿入した最後の行を再選択して連続追加を直下に続ける
+        last_row = tree.topLevelItem(pos + len(items) - 1)
+        if last_row is not None:
+            tree.setCurrentItem(last_row)
         self._set_dirty()
 
     def _selected_index(self, tree: QTreeWidget) -> int:
@@ -404,11 +416,7 @@ class MainWindow(QMainWindow):
         self._recorder = None
         self._stop_button.hide_and_stop_blinking()
         self._hotkeys.start()
-        page = self._current_page()
-        getattr(self._macro, page).extend(items)
-        self._refresh_tree(page)
-        if items:
-            self._set_dirty()
+        self._insert_items_after_selection(items)
         self.statusBar().clearMessage()
         self.showNormal()
         self.activateWindow()
