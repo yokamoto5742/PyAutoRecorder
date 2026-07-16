@@ -90,7 +90,7 @@ def describe_selector(selector: UiSelector) -> str:
 
 
 def _describe_target(item: ActionItem) -> str:
-    if item.selector is not None:
+    if item.selector is not None and item.selector_enabled:
         return describe_selector(item.selector)
     return f"座標({item.x}, {item.y})"
 
@@ -106,7 +106,11 @@ def describe_action(item: ActionItem) -> str:
     if item.action == ActionType.KEY_ONLY:
         return "キー操作のみ"
     if item.action == ActionType.NONE:
-        if item.selector is None and item.x is None and item.y is None:
+        if (
+            (item.selector is None or not item.selector_enabled)
+            and item.x is None
+            and item.y is None
+        ):
             return "（マウス操作なし）"
         return f"{_describe_target(item)}へ移動のみ"
     if item.action in (ActionType.SET_TEXT, ActionType.GET_TEXT):
@@ -179,7 +183,10 @@ def _settings_table(settings: MacroSettings, heading_level: int) -> list[str]:
         ("停止タイマー", settings.stop_timer or _NO_VALUE),
         ("停止タイマーの動作", stop_mode),
         # <ctrl>等がHTMLタグ扱いで非表示にならないようコード表記にする
-        ("一時停止キー", f"`{settings.pause_hotkey}`" if settings.pause_hotkey else _NO_VALUE),
+        (
+            "停止キー",
+            f"`{settings.stop_hotkey}`" if settings.stop_hotkey else _NO_VALUE,
+        ),
         ("速度率", f"{settings.speed_percent}%"),
     ]
     lines = [
@@ -216,7 +223,9 @@ def _item_lines(number: int, item: ActionItem) -> list[str]:
             lines.append(f"    - キーボード操作: {describe_keys(item.keys)}")
     if item.repeat_offset != (0, 0):
         offset_x, offset_y = item.repeat_offset
-        lines.append(f"    - 繰り返すたびに移動する量: (X{offset_x:+d}, Y{offset_y:+d})")
+        lines.append(
+            f"    - 繰り返すたびに移動する量: (X{offset_x:+d}, Y{offset_y:+d})"
+        )
     if item.key_repeat_increase:
         lines.append("    - 繰り返すたびにキー操作の実行回数を増加")
     return lines

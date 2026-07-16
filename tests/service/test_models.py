@@ -16,7 +16,7 @@ def build_sample_macro() -> MacroFile:
         settings=MacroSettings(
             repeat_count=5,
             play_timer="08:00",
-            pause_hotkey="<ctrl>+<f9>",
+            stop_hotkey="<ctrl>+<f9>",
             speed_percent=150,
         ),
         initial=[
@@ -108,7 +108,7 @@ class TestSerialization:
     def test_defaults_from_empty_dict(self):
         macro = MacroFile.from_dict({})
         assert macro.settings.repeat_count == 1
-        assert macro.settings.pause_hotkey == ""
+        assert macro.settings.stop_hotkey == ""
         assert macro.settings.speed_percent == 100
         assert macro.initial == []
         assert macro.loop == []
@@ -127,6 +127,51 @@ class TestSerialization:
         # 旧形式の.par（selectorキーなし）が読み込めること
         item = ActionItem.from_dict({"interval": 1.0, "x": 1, "y": 2, "action": "left"})
         assert item.selector is None
+
+    def test_selector_disabled_roundtrip(self):
+        item = ActionItem(
+            interval=1,
+            x=1,
+            y=2,
+            action=ActionType.LEFT_CLICK,
+            selector=UiSelector(automation_id="OkButton"),
+            selector_enabled=False,
+        )
+        data = item.to_dict()
+        assert data["selector_enabled"] is False
+        assert ActionItem.from_dict(data) == item
+
+    def test_selector_enabled_omitted_when_true(self):
+        # 有効（デフォルト）時は旧形式と同一の出力になること
+        item = ActionItem(
+            interval=1,
+            x=1,
+            y=2,
+            action=ActionType.LEFT_CLICK,
+            selector=UiSelector(automation_id="OkButton"),
+        )
+        assert "selector_enabled" not in item.to_dict()
+
+    def test_legacy_item_without_selector_enabled_defaults_true(self):
+        # 旧形式の.par（selector_enabledキーなし）は有効として読み込まれること
+        item = ActionItem.from_dict(
+            {
+                "interval": 1,
+                "x": 1,
+                "y": 2,
+                "action": "left",
+                "selector": {"automation_id": "OkButton"},
+            }
+        )
+        assert item.selector_enabled is True
+
+    def test_legacy_pause_hotkey_loads_as_stop_hotkey(self):
+        # 旧形式の.par（pause_hotkeyキー）はstop_hotkeyとして読み込まれること
+        settings = MacroSettings.from_dict({"pause_hotkey": "<f5>"})
+        assert settings.stop_hotkey == "<f5>"
+        data = settings.to_dict()
+        assert data["stop_hotkey"] == "<f5>"
+        assert "pause_hotkey" not in data
 
     def test_legacy_float_interval_rounds_to_int(self):
         # 旧形式の.par（小数の間隔）は四捨五入して整数へ変換されること

@@ -163,7 +163,11 @@ class MacroPlayer(QThread):
 
     def _resolve_point(self, item: ActionItem, dx: int, dy: int) -> tuple[int, int]:
         """クリック座標を決める。UIA要素が見つかればその中心、なければ記録座標。"""
-        if item.selector is not None and item.action != ActionType.DRAG:
+        if (
+            item.selector is not None
+            and item.selector_enabled
+            and item.action != ActionType.DRAG
+        ):
             point = ui_selector.find_clickable_point(item.selector)
             if point is not None:
                 return point

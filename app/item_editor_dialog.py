@@ -424,6 +424,10 @@ class ItemEditorDialog(QDialog):
                 self._app_path.text().strip() if action == ActionType.LAUNCH_APP else ""
             ),
             selector=self._edited_selector() if uses_selector else None,
+            # 一覧画面でのON/OFF状態を編集後も引き継ぐ（新規設定時はTrue）
+            selector_enabled=(
+                self._item.selector_enabled if self._item.selector is not None else True
+            ),
         )
 
     def _edited_selector(self) -> UiSelector | None:

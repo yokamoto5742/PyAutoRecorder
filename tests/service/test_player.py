@@ -127,3 +127,19 @@ class TestResolvePoint:
     def test_without_selector_uses_coordinates(self):
         item = ActionItem(x=10, y=20, action=ActionType.LEFT_CLICK)
         assert build_player()._resolve_point(item, 0, 0) == (10, 20)
+
+    def test_disabled_selector_uses_coordinates(self, monkeypatch: pytest.MonkeyPatch):
+        # 対象コントロールのチェックを外した項目は要素検索せず記録座標を使うこと
+        monkeypatch.setattr(
+            ui_selector,
+            "find_clickable_point",
+            lambda s: pytest.fail("find_clickable_pointが呼ばれた"),
+        )
+        item = ActionItem(
+            x=10,
+            y=20,
+            action=ActionType.LEFT_CLICK,
+            selector=UiSelector(automation_id="OpeClearButton"),
+            selector_enabled=False,
+        )
+        assert build_player()._resolve_point(item, 0, 0) == (10, 20)

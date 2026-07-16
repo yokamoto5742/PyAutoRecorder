@@ -1,4 +1,4 @@
-"""オプション設定ダイアログ: parファイル別の一時停止キーと全体の速度率を設定する。"""
+"""オプション設定ダイアログ: parファイル別の停止キーと全体の速度率を設定する。"""
 
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -38,9 +38,9 @@ class OptionsDialog(QDialog):
         self.setWindowTitle(constants.DIALOG_OPTIONS_TITLE)
         form = QFormLayout(self)
 
-        self._use_pause_key = QCheckBox(constants.LABEL_USE_PAUSE_HOTKEY)
-        self._use_pause_key.setChecked(bool(settings.pause_hotkey))
-        form.addRow(self._use_pause_key, self._build_hotkey_row(settings.pause_hotkey))
+        self._use_stop_key = QCheckBox(constants.LABEL_USE_STOP_HOTKEY)
+        self._use_stop_key.setChecked(bool(settings.stop_hotkey))
+        form.addRow(self._use_stop_key, self._build_hotkey_row(settings.stop_hotkey))
 
         self._speed = QSpinBox()
         self._speed.setRange(SPEED_PERCENT_MIN, SPEED_PERCENT_MAX)
@@ -78,13 +78,13 @@ class OptionsDialog(QDialog):
 
     def apply_to(self, settings: MacroSettings) -> None:
         """ダイアログの入力内容をMacroSettingsへ反映する。"""
-        if self._use_pause_key.isChecked():
+        if self._use_stop_key.isChecked():
             modifiers = [
                 m for m, check in self._modifier_checks.items() if check.isChecked()
             ]
-            settings.pause_hotkey = build_hotkey(
+            settings.stop_hotkey = build_hotkey(
                 modifiers, self._key_combo.currentData()
             )
         else:
-            settings.pause_hotkey = ""
+            settings.stop_hotkey = ""
         settings.speed_percent = self._speed.value()

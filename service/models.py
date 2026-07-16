@@ -97,6 +97,7 @@ class ActionItem:
     condition: Condition | None = None
     app_path: str = ""  # LAUNCH_APP時に起動するアプリのフルパス
     selector: UiSelector | None = None  # UIA要素指定。クリック時は座標より優先
+    selector_enabled: bool = True  # 対象コントロールを再生時に使用するか
 
     def to_dict(self) -> dict[str, Any]:
         data: dict[str, Any] = {
@@ -118,6 +119,8 @@ class ActionItem:
             data["app_path"] = self.app_path
         if self.selector is not None:
             data["selector"] = self.selector.to_dict()
+            if not self.selector_enabled:
+                data["selector_enabled"] = False
         return data
 
     @classmethod
@@ -139,6 +142,7 @@ class ActionItem:
             condition=Condition.from_dict(condition) if condition else None,
             app_path=data.get("app_path", ""),
             selector=UiSelector.from_dict(selector) if selector else None,
+            selector_enabled=bool(data.get("selector_enabled", True)),
         )
 
 
@@ -148,7 +152,7 @@ class MacroSettings:
     play_timer: str = ""  # "HH:MM" 空文字は無効
     stop_timer: str = ""
     stop_timer_mode: str = "all"  # "all"=すべて停止 / "final"=最後の処理へ移行
-    pause_hotkey: str = ""  # pynput記法（例 "<f5>", "<ctrl>+<f9>"）。空は無効
+    stop_hotkey: str = ""  # 停止キー。pynput記法（例 "<f5>", "<ctrl>+<f9>"）。空は無効
     speed_percent: int = 100  # 全体の再生速度率（100〜300%）
 
     def to_dict(self) -> dict[str, Any]:
@@ -157,7 +161,7 @@ class MacroSettings:
             "play_timer": self.play_timer,
             "stop_timer": self.stop_timer,
             "stop_timer_mode": self.stop_timer_mode,
-            "pause_hotkey": self.pause_hotkey,
+            "stop_hotkey": self.stop_hotkey,
             "speed_percent": self.speed_percent,
         }
 
@@ -168,7 +172,8 @@ class MacroSettings:
             play_timer=data.get("play_timer", ""),
             stop_timer=data.get("stop_timer", ""),
             stop_timer_mode=data.get("stop_timer_mode", "all"),
-            pause_hotkey=data.get("pause_hotkey", ""),
+            # 旧形式は "pause_hotkey" キー（一時停止キーだった頃の名残）
+            stop_hotkey=data.get("stop_hotkey", data.get("pause_hotkey", "")),
             speed_percent=int(data.get("speed_percent", 100)),
         )
 

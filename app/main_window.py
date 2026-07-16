@@ -49,12 +49,17 @@ from utils.config_manager import ConfigManager
 
 _PAGES = ("initial", "loop", "final")
 _CONDITION_TEXT_COLOR = QColor("red")
+_COL_NUMBER = 0
+_COL_SELECTOR = 7
+# 対象コントロールが必須のアクション（一覧でのチェック外し不可）
+_SELECTOR_REQUIRED_ACTIONS = (ActionType.SET_TEXT, ActionType.GET_TEXT)
 
 
 class MainWindow(QMainWindow):
     # pynputリスナースレッドからメインスレッドへ橋渡しするシグナル
     hotkey_play_stop = Signal()
     hotkey_pause = Signal()
+    hotkey_stop = Signal()
 
     def __init__(self, launch_file_path: str | None = None) -> None:
         super().__init__()
@@ -64,7 +69,7 @@ class MainWindow(QMainWindow):
         self._dirty = False
         self._recorder: MacroRecorder | None = None
         self._player: MacroPlayer | None = None
-        self._pause_hotkey_listener: SingleHotkeyListener | None = None
+        self._stop_hotkey_listener: SingleHotkeyListener | None = None
         self._child_window: RecorderChildWindow | None = None
         self._workflow_editor: WorkflowEditorWindow | None = None
         self._auto_quit_after_playback = launch_file_path is not None
@@ -79,6 +84,7 @@ class MainWindow(QMainWindow):
 
         self.hotkey_play_stop.connect(self._toggle_play_stop)
         self.hotkey_pause.connect(self._toggle_pause)
+        self.hotkey_stop.connect(self._stop_playback)
         self._hotkeys = HotkeyManager(
             on_play_stop=self.hotkey_play_stop.emit,
             on_pause=self.hotkey_pause.emit,
@@ -167,27 +173,33 @@ class MainWindow(QMainWindow):
         for page, title in zip(
             _PAGES, (constants.TAB_INITIAL, constants.TAB_LOOP, constants.TAB_FINAL)
         ):
-            tree = self._build_tree()
+            tree = self._build_tree(page)
             self._trees[page] = tree
             self._tabs.addTab(self._build_tree_page(tree, page), title)
         layout.addWidget(self._tabs)
         self.setCentralWidget(central)
         self.resize(*self._config.get_window_size("main", (800, 500)))
 
-    def _build_tree(self) -> QTreeWidget:
+    def _build_tree(self, page: str) -> QTreeWidget:
         tree = QTreeWidget()
         tree.setHeaderLabels(
             [
+                constants.COLUMN_NUMBER,
                 constants.COLUMN_INTERVAL,
                 constants.COLUMN_X,
                 constants.COLUMN_Y,
                 constants.COLUMN_ACTION,
                 constants.COLUMN_KEYS,
                 constants.COLUMN_CONDITION,
+                constants.COLUMN_SELECTOR,
             ]
         )
         tree.setRootIsDecorated(False)
+        tree.setColumnWidth(_COL_NUMBER, 40)
         tree.itemDoubleClicked.connect(lambda _item, _col: self._edit_item())
+        tree.itemChanged.connect(
+            lambda row, column, p=page: self._on_row_check_changed(p, row, column)
+        )
         tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         tree.customContextMenuRequested.connect(
             lambda pos, t=tree: self._show_context_menu(t, pos)
@@ -228,11 +240,16 @@ class MainWindow(QMainWindow):
 
     def _refresh_tree(self, page: str) -> None:
         tree = self._trees[page]
-        tree.clear()
-        for item in getattr(self._macro, page):
-            tree.addTopLevelItem(self._to_row(item))
+        # 再構築中のitemChanged誤発火を防ぐ
+        tree.blockSignals(True)
+        try:
+            tree.clear()
+            for number, item in enumerate(getattr(self._macro, page), start=1):
+                tree.addTopLevelItem(self._to_row(number, item))
+        finally:
+            tree.blockSignals(False)
 
-    def _to_row(self, item: ActionItem) -> QTreeWidgetItem:
+    def _to_row(self, number: int, item: ActionItem) -> QTreeWidgetItem:
         condition_label = (
             constants.CONDITION_LABELS[item.condition.condition_type.value]
             if item.condition
@@ -240,19 +257,47 @@ class MainWindow(QMainWindow):
         )
         row = QTreeWidgetItem(
             [
+                str(number),
                 str(item.interval),
                 "" if item.x is None else str(item.x),
                 "" if item.y is None else str(item.y),
                 constants.ACTION_LABELS[item.action.value],
                 item.keys,
                 condition_label,
+                "",
             ]
         )
+        if item.selector is not None and item.action != ActionType.LAUNCH_APP:
+            if item.action in _SELECTOR_REQUIRED_ACTIONS:
+                # 対象コントロール必須のアクションはチェック固定
+                row.setCheckState(_COL_SELECTOR, Qt.CheckState.Checked)
+                row.setFlags(row.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
+            else:
+                row.setCheckState(
+                    _COL_SELECTOR,
+                    Qt.CheckState.Checked
+                    if item.selector_enabled
+                    else Qt.CheckState.Unchecked,
+                )
         if item.condition is not None:
             # 条件判断を使用している項目は赤文字で表示（資料準拠）
             for column in range(row.columnCount()):
                 row.setForeground(column, QBrush(_CONDITION_TEXT_COLOR))
         return row
+
+    def _on_row_check_changed(
+        self, page: str, row: QTreeWidgetItem, column: int
+    ) -> None:
+        if column != _COL_SELECTOR:
+            return
+        index = self._trees[page].indexOfTopLevelItem(row)
+        if index < 0:
+            return
+        item = getattr(self._macro, page)[index]
+        enabled = row.checkState(_COL_SELECTOR) == Qt.CheckState.Checked
+        if item.selector is not None and enabled != item.selector_enabled:
+            item.selector_enabled = enabled
+            self._set_dirty()
 
     def _set_dirty(self, dirty: bool = True) -> None:
         self._dirty = dirty
@@ -404,22 +449,22 @@ class MainWindow(QMainWindow):
         self._player = MacroPlayer(self._macro, fields=fields)
         self._player.playback_finished.connect(self._on_playback_finished)
         self._player.error_occurred.connect(self._on_playback_error)
-        self._start_pause_hotkey_listener()
+        self._start_stop_hotkey_listener()
         if not self._auto_quit_after_playback:
             self.showMinimized()
         self._player.start()
 
-    def _start_pause_hotkey_listener(self) -> None:
-        if self._macro.settings.pause_hotkey:
-            self._pause_hotkey_listener = SingleHotkeyListener(
-                self._macro.settings.pause_hotkey, self.hotkey_pause.emit
+    def _start_stop_hotkey_listener(self) -> None:
+        if self._macro.settings.stop_hotkey:
+            self._stop_hotkey_listener = SingleHotkeyListener(
+                self._macro.settings.stop_hotkey, self.hotkey_stop.emit
             )
-            self._pause_hotkey_listener.start()
+            self._stop_hotkey_listener.start()
 
-    def _stop_pause_hotkey_listener(self) -> None:
-        if self._pause_hotkey_listener is not None:
-            self._pause_hotkey_listener.stop()
-            self._pause_hotkey_listener = None
+    def _teardown_stop_hotkey_listener(self) -> None:
+        if self._stop_hotkey_listener is not None:
+            self._stop_hotkey_listener.stop()
+            self._stop_hotkey_listener = None
 
     def _stop_playback(self) -> None:
         if self._player is not None:
@@ -438,7 +483,7 @@ class MainWindow(QMainWindow):
             self._player.toggle_pause()
 
     def _on_playback_finished(self, completed: bool) -> None:
-        self._stop_pause_hotkey_listener()
+        self._teardown_stop_hotkey_listener()
         if self._player is not None:
             self._player.wait()
             self._player = None
@@ -447,12 +492,12 @@ class MainWindow(QMainWindow):
             return
         self.showNormal()
         self.activateWindow()
-        message = (
-            constants.MSG_PLAYBACK_FINISHED
-            if completed
-            else constants.MSG_PLAYBACK_STOPPED
-        )
-        self.statusBar().showMessage(message, 5000)
+        if completed:
+            self.statusBar().showMessage(constants.MSG_PLAYBACK_FINISHED, 5000)
+        else:
+            QMessageBox.information(
+                self, constants.WINDOW_TITLE, constants.MSG_PLAYBACK_STOPPED
+            )
 
     def _on_playback_error(self, error: str) -> None:
         QMessageBox.warning(
@@ -638,7 +683,7 @@ class MainWindow(QMainWindow):
             return
         self._tray.hide()
         self._hotkeys.stop()
-        self._stop_pause_hotkey_listener()
+        self._teardown_stop_hotkey_listener()
         if self._recorder is not None:
             self._recorder.stop()
         if self._player is not None:

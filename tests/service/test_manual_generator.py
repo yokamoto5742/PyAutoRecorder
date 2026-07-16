@@ -33,7 +33,9 @@ class TestDescribeKeys:
         assert describe_keys("{VAR:氏名}") == "クリップボード変数「氏名」を入力"
 
     def test_var_with_format(self):
-        assert describe_keys("{VAR:実施日:日付}") == "クリップボード変数「実施日」を入力"
+        assert (
+            describe_keys("{VAR:実施日:日付}") == "クリップボード変数「実施日」を入力"
+        )
 
     def test_commands(self):
         assert describe_keys("{WAIT}{CLIP}") == "0.5秒待機、クリップボード貼り付け"
@@ -47,7 +49,9 @@ class TestDescribeKeys:
 
 class TestDescribeCondition:
     def test_window_with_max_wait(self):
-        condition = Condition(ConditionType.WINDOW_SHOWN_WAIT, "メモ帳", max_wait_sec=10)
+        condition = Condition(
+            ConditionType.WINDOW_SHOWN_WAIT, "メモ帳", max_wait_sec=10
+        )
         text = describe_condition(condition)
         assert "次のウィンドウが表示されるまで待機" in text
         assert "「メモ帳」" in text
@@ -126,6 +130,17 @@ class TestDescribeAction:
             == "ウィンドウ『FormPat』のButtonControl『OpeClearButton』を左クリック"
         )
 
+    def test_disabled_selector_click_uses_coordinates(self):
+        # 対象コントロールのチェックを外した項目は座標表記になること（実挙動と一致）
+        item = ActionItem(
+            x=100,
+            y=200,
+            action=ActionType.LEFT_CLICK,
+            selector=UiSelector(control_type="ButtonControl", automation_id="Btn"),
+            selector_enabled=False,
+        )
+        assert describe_action(item) == "座標(100, 200)を左クリック"
+
     def test_drag(self):
         item = ActionItem(x=10, y=20, action=ActionType.DRAG, drag_to=(50, 60))
         assert describe_action(item) == "座標(10, 20)から座標(50, 60)へドラッグ"
@@ -156,7 +171,7 @@ class TestGenerateMacroManual:
         assert constants.TAB_FINAL in text
         assert "左クリック" in text
         assert "| 繰り返し回数 | 5 |" in text
-        assert "| 一時停止キー | `<ctrl>+<f9>` |" in text
+        assert "| 停止キー | `<ctrl>+<f9>` |" in text
         assert "[Alt+F4]" in text
         assert "（画像はファイル内に保存）" in text
 

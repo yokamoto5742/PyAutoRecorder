@@ -15,12 +15,14 @@ LABEL_BULK_INTERVAL = "間隔(秒)一括設定"
 BUTTON_BULK_INTERVAL = "一括設定"
 MSG_BULK_INTERVAL_APPLIED = "表示中のタブの間隔(秒)を{value}秒にしました。"
 
+COLUMN_NUMBER = "番号"
 COLUMN_INTERVAL = "間隔(秒)"
 COLUMN_X = "横位置"
 COLUMN_Y = "縦位置"
 COLUMN_ACTION = "クリック方法"
 COLUMN_KEYS = "キーボード操作"
 COLUMN_CONDITION = "条件判断"
+COLUMN_SELECTOR = "対象コントロール"
 
 # ツールバー
 TOOLBAR_NEW = "新規"
@@ -66,7 +68,7 @@ FILE_DIALOG_SAVE_TITLE = "名前を付けて保存"
 # 確認・通知メッセージ
 MSG_CONFIRM_DISCARD = "変更が保存されていません。破棄しますか？"
 MSG_PLAYBACK_FINISHED = "再生が完了しました。"
-MSG_PLAYBACK_STOPPED = "再生を停止しました。"
+MSG_PLAYBACK_STOPPED = "処理を停止しました。"
 MSG_PLAYBACK_ERROR = "再生中にエラーが発生しました: {error}"
 MSG_RECORDING = "記録中... 画面右下のボタンで終了します。"
 MSG_FILE_LOAD_ERROR = "ファイルを読み込めませんでした: {error}"
@@ -210,7 +212,7 @@ STOP_MODE_LABELS = {
 # オプション設定（parファイル別）
 TOOLBAR_OPTIONS = "オプション"
 DIALOG_OPTIONS_TITLE = "オプション設定"
-LABEL_USE_PAUSE_HOTKEY = "一時停止の制御キーを使用"
+LABEL_USE_STOP_HOTKEY = "停止の制御キーを使用"
 LABEL_SPEED_PERCENT = "全体の速度率(%):"
 
 # トレイランチャー
