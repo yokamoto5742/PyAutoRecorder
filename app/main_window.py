@@ -328,7 +328,7 @@ class MainWindow(QMainWindow):
     # --- 項目操作 ---
 
     def add_item_to_current_page(self, item: ActionItem) -> None:
-        """現在表示中のページへ項目を追加する（子機・手動記録からも使う）。"""
+        """現在表示中のページへ項目を追加する（手動記録からも使う）。"""
         self._insert_items_after_selection([item])
 
     def _insert_items_after_selection(self, items: list[ActionItem]) -> None:

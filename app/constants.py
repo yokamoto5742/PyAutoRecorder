@@ -35,7 +35,7 @@ TOOLBAR_PAUSE = "一時停止"
 
 # 記録メニュー
 MENU_RECORD_AUTO = "自動記録"
-MENU_RECORD_MANUAL_MOUSE = "手動 - マウス操作の記録（子機）"
+MENU_RECORD_MANUAL_MOUSE = "手動 - マウス操作の記録"
 MENU_RECORD_MANUAL_KEY = "手動 - キーボード操作の記録"
 
 # 項目操作
@@ -182,14 +182,14 @@ DIALOG_LOAD_IMAGE_TITLE = "画像ファイルの選択"
 FILTER_IMAGE_FILES = "画像ファイル (*.png *.jpg *.jpeg *.bmp);;すべてのファイル (*.*)"
 MSG_IMAGE_LOAD_FAILED = "画像ファイルを読み込めませんでした。"
 
-# 子機
-CHILD_WINDOW_TITLE = "子機"
+# マウス記録
+CHILD_WINDOW_TITLE = "マウス記録"
 CHILD_MENU_LEFT = "左クリック"
 CHILD_MENU_RIGHT = "右クリック"
 CHILD_MENU_DOUBLE = "Wクリック"
 CHILD_MENU_MIDDLE = "中クリック"
 CHILD_MENU_MOVE_ONLY = "移動のみ"
-CHILD_MENU_CLOSE = "子機を閉じる"
+CHILD_MENU_CLOSE = "マウス記録を閉じる"
 
 # トレイ
 TRAY_MENU_SHOW = "メインウィンドウを表示"
