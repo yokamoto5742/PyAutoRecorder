@@ -555,7 +555,10 @@ class MainWindow(QMainWindow):
         if not self._maybe_discard():
             return
         path_str, _filter = QFileDialog.getOpenFileName(
-            self, constants.FILE_DIALOG_OPEN_TITLE, "", constants.FILE_DIALOG_FILTER
+            self,
+            constants.FILE_DIALOG_OPEN_TITLE,
+            str(self._config.get_par_dir()),
+            constants.FILE_DIALOG_FILTER,
         )
         if not path_str:
             return
