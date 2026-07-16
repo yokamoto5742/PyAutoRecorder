@@ -21,7 +21,7 @@ _PAGE_BY_HEADING = {
     constants.TAB_LOOP: "loop",
     constants.TAB_FINAL: "final",
 }
-_HIGHLIGHT_COLOR = QColor("#ffe066")
+_HIGHLIGHT_COLOR = QColor("#424242")
 
 
 def build_step_map(document: QTextDocument) -> dict[tuple[str, int], int]:
