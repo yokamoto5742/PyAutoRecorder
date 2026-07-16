@@ -1,10 +1,12 @@
 import uuid
 
-from PySide6.QtCore import QCoreApplication
+from PySide6.QtWidgets import QApplication
 
 from service.single_instance import SingleInstanceServer, forward_to_running_instance
 
-_app = QCoreApplication.instance() or QCoreApplication([])
+# QCoreApplicationではなくQApplicationを生成する
+# （コレクション時に先へ生成されるため、ウィジェットを使うテストと共存させる）
+_app = QApplication.instance() or QApplication([])
 
 
 def _unique_server_name() -> str:

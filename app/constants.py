@@ -228,6 +228,8 @@ MSG_FIELDS_ERROR = "クリップボード変数を取り込めませんでした
 
 # 操作手順書
 TOOLBAR_MANUAL = "手順書"
+TOOLBAR_MANUAL_PREVIEW = "プレビュー"
+MANUAL_PREVIEW_TITLE = "操作手順書: {name}"
 MSG_MANUAL_SAVED = "操作手順書を保存しました: {path}"
 MSG_MANUAL_NO_FILE = "先にファイルを保存してください。"
 MSG_MANUAL_ERROR = "操作手順書を生成できませんでした: {error}"

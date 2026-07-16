@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QBrush, QCloseEvent, QColor
+from PySide6.QtGui import QAction, QBrush, QCloseEvent, QColor
 from PySide6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QSpinBox,
+    QSplitter,
     QTabWidget,
     QToolBar,
     QToolButton,
@@ -26,6 +27,7 @@ from PySide6.QtWidgets import (
 from app import constants
 from app.field_confirm import confirm_fields
 from app.item_editor_dialog import ItemEditorDialog
+from app.manual_preview import ManualPreviewWidget
 from app.options_dialog import OptionsDialog
 from app.recorder_child_window import RecorderChildWindow
 from app.recording_stop_button import RecordingStopButton
@@ -49,6 +51,7 @@ from utils.config_manager import ConfigManager
 
 _PAGES = ("initial", "loop", "final")
 _CONDITION_TEXT_COLOR = QColor("red")
+_PREVIEW_DEFAULT_WIDTH = 400
 _COL_NUMBER = 0
 _COL_SELECTOR = 7
 # 対象コントロールが必須のアクション（一覧でのチェック外し不可）
@@ -132,6 +135,10 @@ class MainWindow(QMainWindow):
         toolbar.addAction(constants.TOOLBAR_TIMER, self._edit_timers)
         toolbar.addAction(constants.TOOLBAR_OPTIONS, self._edit_options)
         toolbar.addAction(constants.TOOLBAR_MANUAL, self._generate_manual)
+        self._preview_action = QAction(constants.TOOLBAR_MANUAL_PREVIEW, self)
+        self._preview_action.setCheckable(True)
+        self._preview_action.toggled.connect(self._on_preview_toggled)
+        toolbar.addAction(self._preview_action)
         toolbar.addSeparator()
         toolbar.addAction(constants.TOOLBAR_WORKFLOW, self._show_workflow_editor)
 
@@ -177,8 +184,19 @@ class MainWindow(QMainWindow):
             self._trees[page] = tree
             self._tabs.addTab(self._build_tree_page(tree, page), title)
         layout.addWidget(self._tabs)
-        self.setCentralWidget(central)
+        self._tabs.currentChanged.connect(lambda _index: self._sync_preview_highlight())
+
+        self._preview = ManualPreviewWidget()
+        self._preview.setVisible(False)
+        self._splitter = QSplitter(Qt.Orientation.Horizontal)
+        self._splitter.addWidget(central)
+        self._splitter.addWidget(self._preview)
+        self._splitter.setCollapsible(0, False)
+        self._splitter.setCollapsible(1, False)
+        self.setCentralWidget(self._splitter)
         self.resize(*self._config.get_window_size("main", (800, 500)))
+        if self._config.config.get("ManualPreview", "visible", fallback="0") == "1":
+            self._preview_action.setChecked(True)
 
     def _build_tree(self, page: str) -> QTreeWidget:
         tree = QTreeWidget()
@@ -197,6 +215,7 @@ class MainWindow(QMainWindow):
         tree.setRootIsDecorated(False)
         tree.setColumnWidth(_COL_NUMBER, 40)
         tree.itemDoubleClicked.connect(lambda _item, _col: self._edit_item())
+        tree.itemSelectionChanged.connect(self._sync_preview_highlight)
         tree.itemChanged.connect(
             lambda row, column, p=page: self._on_row_check_changed(p, row, column)
         )
@@ -299,6 +318,7 @@ class MainWindow(QMainWindow):
     def _set_dirty(self, dirty: bool = True) -> None:
         self._dirty = dirty
         self._update_window_title()
+        self._refresh_preview()
 
     def _update_window_title(self) -> None:
         name = self._file_path.name if self._file_path else constants.UNTITLED_FILE
@@ -609,6 +629,48 @@ class MainWindow(QMainWindow):
         )
         self._confirm_open_folder(output_path.parent)
 
+    # --- 手順書プレビュー ---
+
+    def _on_preview_toggled(self, visible: bool) -> None:
+        """プレビューペインの開閉。開閉分だけウィンドウ幅も増減させる。"""
+        if visible:
+            width = self._saved_preview_width()
+            self._preview.setVisible(True)
+            if not self.isMaximized():
+                self.resize(self.width() + width, self.height())
+            self._splitter.setSizes([self.width() - width, width])
+            self._refresh_preview()
+        else:
+            width = self._preview.width()
+            self._preview.setVisible(False)
+            if not self.isMaximized():
+                self.resize(max(self.width() - width, 1), self.height())
+            self._config.set_value("ManualPreview", "width", str(width))
+        self._config.set_value("ManualPreview", "visible", "1" if visible else "0")
+
+    def _saved_preview_width(self) -> int:
+        value = self._config.config.get("ManualPreview", "width", fallback="")
+        try:
+            return max(int(value), 100)
+        except ValueError:
+            return _PREVIEW_DEFAULT_WIDTH
+
+    def _refresh_preview(self) -> None:
+        # isHidden: 起動直後（ウィンドウ未表示）でもペインの表示指定を判定できる
+        if self._preview.isHidden():
+            return
+        name = self._file_path.stem if self._file_path else constants.UNTITLED_FILE
+        self._preview.set_macro(self._macro, name)
+        self._sync_preview_highlight()
+
+    def _sync_preview_highlight(self) -> None:
+        if self._preview.isHidden():
+            return
+        page = self._current_page()
+        index = self._selected_index(self._trees[page])
+        # 未選択時はindex=-1で対応表に該当がなく、ハイライト解除だけが起きる
+        self._preview.highlight_step(page, index + 1)
+
     def _confirm_open_folder(self, folder: Path) -> None:
         answer = QMessageBox.question(
             self, constants.WINDOW_TITLE, constants.MSG_OPEN_FOLDER_CONFIRM
@@ -689,6 +751,8 @@ class MainWindow(QMainWindow):
         if not self._maybe_discard():
             event.ignore()
             return
+        if not self._preview.isHidden():
+            self._config.set_value("ManualPreview", "width", str(self._preview.width()))
         self._tray.hide()
         self._hotkeys.stop()
         self._teardown_stop_hotkey_listener()
